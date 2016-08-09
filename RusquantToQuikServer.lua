@@ -5,11 +5,4 @@
 -- Company: rusquant.ru
 -- Date: 09.08.2016
 ------------------------------------------------------------------------------
---
--- Remark to name of modules:
---      1. I know about lua code style conventions, but i will use java code style conventions
---      2. I know, that lua suports OOP, classes and, even, inheritance, but will procedural programming and modules.
---         I'm convinced, that OOP is the best approach for developing complex things, but lua is C-based interpreted language...
---         I think, that usages of modules instead of unclear table-classes for code splitting is a bit better approach. Practice will show...:)
-------------------------------------------------------------------------------
 
