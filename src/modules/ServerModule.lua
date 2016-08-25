@@ -141,7 +141,7 @@ local function createPipe()
     pipeHandle = assert( ffiLib.C.CreateNamedPipeA(PIPE_NAME, pipeOpenMode, pipeMode, MAX_NUM_OF_INSTANCES, OUT_BUFFER_SIZE, IN_BUFFER_SIZE, DEFAULT_TIME_OUT, SCURITTY_ATTRIBUTES) );
     if pipeHandle == INVALID_HANDLE_VALUE then
         -- logger.log();
-        ffiLib.C.MessageBoxA(nil, "PIPE " + PIPE_NAME + "CREATION FAILED WITH ERROR: " + ffiLib.C.GetLastError(), "ERROR", 0);
+        -- ffiLib.C.MessageBoxA(nil, "PIPE " + PIPE_NAME + "CREATION FAILED WITH ERROR: " + ffiLib.C.GetLastError(), "ERROR", 0);
         return false;
     else
         return true;
@@ -156,14 +156,20 @@ end;
 -- non-zero value - If the function succeeds
 ---------------------------------------------------------------------------------------
 local function closeHandle()
-    local result = ffiLib.C.CloseHandle(pipeHandle);
-    if result == 0 then
-        ffiLib.C.MessageBoxA(nil, "PIPE " + PIPE_NAME + "CLOSING OF HANDLE FAILED WITH ERROR: " + ffiLib.C.GetLastError(), "ERROR", 0);
-        -- logger.log();
-        return false;
-    else
-        return true;
+
+    if pipeHandle ~= INVALID_HANDLE_VALUE then
+
+        local result = ffiLib.C.CloseHandle(pipeHandle);
+        if result == 0 then
+            -- ffiLib.C.MessageBoxA(nil, "PIPE " + PIPE_NAME + "CLOSING OF HANDLE FAILED WITH ERROR: " + ffiLib.C.GetLastError(), "ERROR", 0);
+            -- logger.log();
+            return false;
+        else
+            return true;
+        end;
+
     end;
+
 end;
 
 
@@ -173,16 +179,13 @@ end;
 --
 ---------------------------------------------------------------------------------------
 local function waitForClientConnection()
-    -- local countter = 0;
 
-    while true do
-          if lpOverlapped.Internal ~= STATUS_PENDING or isServerStoped == true then
+    while isServerStoped ~= true do
+          if lpOverlapped.Internal ~= STATUS_PENDING then
                 break;
           end;
-
-          -- print "Waiting for client's connection";
-          -- countter = countter + 1;
     end;
+
 end;
 
 
@@ -256,6 +259,8 @@ function ServerModule : init()
                     int CloseHandle(HANDLE hObject);
                     int GetLastError();
                     int MessageBoxA(void *w, const char *txt, const char *cap, int type);
+                    int WriteFile(HANDLE hFile, const char *lpBuffer, int nNumberOfBytesToWrite, int *lpNumberOfBytesWritten, OVERLAPPED* lpOverlapped);
+                    int ReadFile(HANDLE hFile, PVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, OVERLAPPED* lpOverlapped);
     ]];
 
     INVALID_HANDLE_VALUE = assert( ffiLib.cast("void*", -1) );
@@ -273,26 +278,35 @@ end;
 ---------------------------------------------------------------------------------------
 function ServerModule : connect()
 
-        print "Within connect";
         local immediateConnectResult = assert( ffiLib.C.ConnectNamedPipe(pipeHandle, lpOverlapped) );
         if immediateConnectResult ~= 0 then
-            print "Within immediateConnectResult equals to zero";
-            -- This means that instance of pipe is ready for new client connection:
-            -- 1. First call of ConnectNamedPipe() for this instance of pipe
-            -- 2. Or pipe descriptor has been cleaned by call of DisconnectNamedPipe()
+
             waitForClientConnection();
             --isServerConnected = checkConnection();
+            isServerConnected = true;
 
         else
-            print "Within immediateConnectResult not equals to zero";
+
             -- This means that we have troubles with pipe's descriptor and we need to analize GetLastError() result.
             local lastError = ffiLib.C.GetLastError();
-            print(lastError);
             waitForClientConnection();
-            if lastError == ERROR_NO_DATA or lastError == ERROR_PIPE_LISTENING then
+
+
+            if lastError == ERROR_IO_PENDING then
+
+                -- According to https://msdn.microsoft.com/en-us/library/aa365603(v=VS.85).aspx:
+                -- This error means that IO operation is still in progress and we need to wait until someone connect
+                waitForClientConnection();
+                isServerConnected = true;
 
             elseif lastError == ERROR_PIPE_CONNECTED then
-                -- Nothing to to the connection is good
+
+                -- This means that client is already connected
+                isServerConnected = true;
+
+            else
+                -- ConnectNamedPipe() failed
+                isServerConnected = false;
             end;
 
         end;
@@ -329,13 +343,32 @@ function ServerModule : run()
 
         -- 1. Wait for client's connection
         ServerModule.connect();
+        if isServerConnected == true then
 
+            local counter = 0;
+            while isServerStoped ~= true do
+
+                local response = "HELLO TO JAVA PIPE CLIENT FROM LUA PIPE SERVER RUNNING UNDER QUIK";
+                local overaptStruct = ffiLib.new("OVERLAPPED");
+                ffiLib.C.WriteFile(pipeHandle, response, string.len(response), nil, overaptStruct);
+                ffiLib.C.FlushFileBuffers(pipeHandle);
+                sleep(1000);
+
+
+                if counter == 10 then
+                    sleep(10000);
+                    break;
+                else
+                    counter = counter + 1;
+                end;
+
+            end;
+
+        else
+            closeHandle();
+        end;
 
     end;
-
-    --while isServerStoped ~= true do
-
-    --end; -- End of server main loop
 
 end;
 
@@ -365,6 +398,11 @@ end;
 
 function ServerModule : isSeverConnected()
     return isServerConnected;
+end
+
+
+function ServerModule : isServerStoped()
+    return isServerStoped;
 end
 
 -- End of the module
