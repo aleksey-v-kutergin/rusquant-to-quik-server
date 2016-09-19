@@ -13,6 +13,14 @@
 local ServerModule = {}; -- public interface
 
 
+---------------------------------------------------------------------------------------
+-- REQUIRE section
+--
+---------------------------------------------------------------------------------------
+
+local requestManager = assert( require "modules.RequestManager" );
+
+
 
 ---------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------
@@ -89,16 +97,6 @@ local DEFAULT_TIME_OUT = 0;
 local SCURITTY_ATTRIBUTES; -- = nil
 
 
----------------------------------------------------------------------------------------
--- Pipe ERRORS and ERROR CODES
----------------------------------------------------------------------------------------
-
-local INVALID_HANDLE_VALUE;
-local ERROR_PIPE_CONNECTED = 535;
-local STATUS_PENDING = 259;
-local ERROR_IO_PENDING = 997;
-local ERROR_NO_DATA = 232;
-local ERROR_PIPE_LISTENING = 536;
 
 ---------------------------------------------------------------------------------------
 -- Utility variables
@@ -116,9 +114,30 @@ local pipeHandle;
 -- OVERLAPPED structure
 local lpOverlapped;
 
+-- Buffer for incoming data
+-- local readBuffer = ffiLib.new("char[?]", IN_BUFFER_SIZE);
+local readBuffer = ffiLib.new("char [4*1024]");
+local readBufferLength = ffiLib.new("unsigned long[1]", 1);
+local countOfBytesRead = ffiLib.new("unsigned long[1]", 1); -- lua from C type's conversion specific
+
 local isServerInitSuccess = false;
 local isServerConnected = false;
 local isServerStoped = false;
+
+
+
+
+---------------------------------------------------------------------------------------
+-- Pipe ERRORS and ERROR CODES
+---------------------------------------------------------------------------------------
+
+local INVALID_HANDLE_VALUE = assert( ffiLib.cast("void*", -1) );
+local ERROR_PIPE_CONNECTED = 535;
+local STATUS_PENDING = 259;
+local ERROR_IO_PENDING = 997;
+local ERROR_NO_DATA = 232;
+local ERROR_PIPE_LISTENING = 536;
+
 
 
 ---------------------------------------------------------------------------------------
@@ -135,6 +154,7 @@ local isServerStoped = false;
 -- false - if fail
 ---------------------------------------------------------------------------------------
 local function createPipe()
+
     local pipeOpenMode = PIPE_ACCESS_DUPLEX + FILE_FLAG_OVERLAPPED + FILE_FLAG_FIRST_PIPE_INSTANCE;
     local pipeMode = PIPE_TYPE_MESSAGE + PIPE_READMODE_MESSAGE + PIPE_REJECT_REMOTE_CLIENTS;
 
@@ -173,6 +193,7 @@ local function closeHandle()
 end;
 
 
+
 ---------------------------------------------------------------------------------------
 -- Waits FOREVER for incomming client connection
 -- So the server can be stoped only by triggering of OnStop() event in QUIK or aborting  the script execution
@@ -199,17 +220,127 @@ end;
 -- false - else
 ---------------------------------------------------------------------------------------
 local function checkConnection()
+
     -- According to docs, a new instance of OVERLAPPED structure has to be used for each asynchroniouse call
     local overaptStruct = ffiLib.new("OVERLAPPED");
 
-    local immediateConnectResult = ffiLib.C.ConnectNamedPipe(pipeHandle, overaptStruct);
-    local lastError = ffiLib.C.GetLastError();
+    local result = ffiLib.C.ConnectNamedPipe(pipeHandle, overaptStruct);
+    local error = ffiLib.C.GetLastError();
 
-    if immediateConnectResult == 0 and lastError == ERROR_PIPE_CONNECTED then
+    if result == 0 and error == ERROR_PIPE_CONNECTED then
         return true;
     else
         return false;
     end;
+end;
+
+
+
+---------------------------------------------------------------------------------------
+-- Reads bytes from buffer and transforms them to lua string
+--
+---------------------------------------------------------------------------------------
+local function readRequestFromBuffer(buffer, length)
+
+    local request;
+    if length > 0 then
+        request = ffiLib.string(buffer);
+    end;
+
+    return request;
+
+end;
+
+
+
+---------------------------------------------------------------------------------------
+-- Wiats for the end of the asynchroniouse operation
+--
+---------------------------------------------------------------------------------------
+local function waitForOperationEnd(overlappedStruct)
+
+    while isServerStoped ~= true do
+        if overlappedStruct.Internal ~= STATUS_PENDING then break end;
+    end;
+
+end;
+
+
+
+---------------------------------------------------------------------------------------
+-- Reads message from pipe client
+--
+---------------------------------------------------------------------------------------
+local function readMessage()
+
+    local request;
+    local overlappedStruct = ffiLib.new("OVERLAPPED");
+    --local result = ffiLib.C.ReadFile(pipeHandle, readBuffer, IN_BUFFER_SIZE, countOfBytesRead, overlappedStruct);
+    local result = ffiLib.C.ReadFile(pipeHandle, readBuffer, IN_BUFFER_SIZE, countOfBytesRead, overlappedStruct);
+    if result ~= 0 then
+
+        request = readRequestFromBuffer(readBuffer, countOfBytesRead[0]);
+        --ffiLib.C.FlushFileBuffers(pipeHandle);
+
+    else
+
+        local error = ffiLib.C.GetLastError();
+        if error == ERROR_IO_PENDING then
+
+            waitForOperationEnd(overlappedStruct);
+            request = readRequestFromBuffer(readBuffer, countOfBytesRead[0]);
+            --ffiLib.C.FlushFileBuffers(pipeHandle);
+
+        else
+
+            -- read operation failed for some reason
+            -- logger.log(error);
+
+        end;
+
+    end;
+
+    return request;
+
+end;
+
+
+
+
+---------------------------------------------------------------------------------------
+-- Writes message to pipe client
+--
+---------------------------------------------------------------------------------------
+local function writeMessage(response)
+
+    local overlappedStruct = ffiLib.new("OVERLAPPED");
+    ffiLib.C.MessageBoxA(nil, "After ffiLib.C.WriteFile" .. "RESPONSE: " .. response .. "RESPONSE LENGTH:" .. string.len(response) .. " LAST ERROR: " .. ffiLib.C.GetLastError(), "DUBUG", 0);
+    local result = ffiLib.C.WriteFile(pipeHandle, response, string.len(response), readBufferLength, lpOverlapped);
+    --ffiLib.C.FlushFileBuffers(pipeHandle);
+    --ffiLib.C.MessageBoxA(nil, "After ffiLib.C.FlushFileBuffers" .. " LAST ERROR: " .. ffiLib.C.GetLastError(), "DUBUG", 0);
+
+    --[[
+    if result ~= 0 then
+
+        ffiLib.C.FlushFileBuffers(pipeHandle);
+
+    else
+
+        local error = ffiLib.C.GetLastError();
+        if error == ERROR_IO_PENDING then
+
+            waitForOperationEnd(overlappedStruct);
+            ffiLib.C.FlushFileBuffers(pipeHandle);
+
+        else
+
+            -- write operation failed for some reason
+            -- logger.log(error);
+
+        end;
+
+    end;]]
+
 end;
 
 
@@ -228,6 +359,7 @@ end;
 -- __cdecl mneas, that args of function are pushed into the stack in reverse order and call stack is cleaned by caller
 ---------------------------------------------------------------------------------------
 function ServerModule : init()
+
     dllLibs.__cdecl = assert(ffiLib.load("kernel32"));
 
     ffiLib.cdef[[
@@ -236,6 +368,7 @@ function ServerModule : init()
                     typedef DWORD * LPDWORD;
                     typedef void * PVOID;
                     typedef PVOID HANDLE;
+
                     typedef struct
                     {
                         ULONG_PTR Internal;
@@ -251,6 +384,7 @@ function ServerModule : init()
                         };
                         HANDLE hEvent;
                     } OVERLAPPED;
+
                     int CreateNamedPipeA(const char *name, int openMode, int pipeMode, int maxInstances, int outBufferSize, int inBufferSize, int defTimeout, void *security);
                     int ConnectNamedPipe(HANDLE, OVERLAPPED*);
                     bool GetOverlappedResult(HANDLE hFile, OVERLAPPED * lpOverlapped, LPDWORD lpNumberOfBytesTransferred, bool bWait);
@@ -262,10 +396,9 @@ function ServerModule : init()
                     int WriteFile(HANDLE hFile, const char *lpBuffer, int nNumberOfBytesToWrite, int *lpNumberOfBytesWritten, OVERLAPPED* lpOverlapped);
                     int ReadFile(HANDLE hFile, PVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, OVERLAPPED* lpOverlapped);
     ]];
-
-    INVALID_HANDLE_VALUE = assert( ffiLib.cast("void*", -1) );
     lpOverlapped = ffiLib.new("OVERLAPPED");
     isServerInitSuccess = createPipe();
+
 end;
 
 
@@ -289,15 +422,12 @@ function ServerModule : connect()
 
             -- This means that we have troubles with pipe's descriptor and we need to analize GetLastError() result.
             local lastError = ffiLib.C.GetLastError();
-            waitForClientConnection();
-
-
             if lastError == ERROR_IO_PENDING then
 
                 -- According to https://msdn.microsoft.com/en-us/library/aa365603(v=VS.85).aspx:
                 -- This error means that IO operation is still in progress and we need to wait until someone connect
                 waitForClientConnection();
-                isServerConnected = true;
+                isServerConnected = true; -- checkConnection();
 
             elseif lastError == ERROR_PIPE_CONNECTED then
 
@@ -341,28 +471,37 @@ function ServerModule : run()
 
     if isServerInitSuccess == true then
 
-        -- 1. Wait for client's connection
         ServerModule.connect();
         if isServerConnected == true then
 
-            local counter = 0;
+            --local counter = 1;
             while isServerStoped ~= true do
 
-                local response = "HELLO TO JAVA PIPE CLIENT FROM LUA PIPE SERVER RUNNING UNDER QUIK";
-                local overaptStruct = ffiLib.new("OVERLAPPED");
-                ffiLib.C.WriteFile(pipeHandle, response, string.len(response), nil, overaptStruct);
-                ffiLib.C.FlushFileBuffers(pipeHandle);
-                sleep(1000);
+                local request = readMessage();
 
+                --ffiLib.C.MessageBoxA(nil, request, "DEBUG", 0);
+                --if request ~= nil then
+                if request ~= nil then
+                    --ffiLib.C.MessageBoxA(nil, request, "REQUEST MESSAGE", 0);
+                    local response = requestManager.processRequest(self, request);
+                    writeMessage(response);
+                end;
+                sleep(1);
+
+                --[[local request = "HELLO CLIENT FROM QUIK SERVER";
+                local response = requestManager.processRequest(self, request);
+                writeMessage(response);
+                sleep(1000);
 
                 if counter == 10 then
                     sleep(10000);
                     break;
                 else
                     counter = counter + 1;
-                end;
+                end;]]
 
             end;
+            closeHandle();
 
         else
             closeHandle();
