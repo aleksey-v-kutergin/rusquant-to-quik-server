@@ -19,8 +19,7 @@ local ServerModule = {}; -- public interface
 ---------------------------------------------------------------------------------------
 
 local requestManager = assert( require "modules.RequestManager" );
-
-
+local logManager = assert( require "modules.LogManager" );
 
 ---------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------
@@ -125,6 +124,8 @@ local isServerConnected = false;
 local isServerStoped = false;
 
 
+local serverLogFile;
+
 
 
 ---------------------------------------------------------------------------------------
@@ -155,13 +156,14 @@ local ERROR_PIPE_LISTENING = 536;
 ---------------------------------------------------------------------------------------
 local function createPipe()
 
+    logManager.writeToLog(this, "SERVER TRYING TO CREATE PIPE HANDLE");
+
     local pipeOpenMode = PIPE_ACCESS_DUPLEX + FILE_FLAG_OVERLAPPED + FILE_FLAG_FIRST_PIPE_INSTANCE;
     local pipeMode = PIPE_TYPE_MESSAGE + PIPE_READMODE_MESSAGE + PIPE_REJECT_REMOTE_CLIENTS;
 
     pipeHandle = assert( ffiLib.C.CreateNamedPipeA(PIPE_NAME, pipeOpenMode, pipeMode, MAX_NUM_OF_INSTANCES, OUT_BUFFER_SIZE, IN_BUFFER_SIZE, DEFAULT_TIME_OUT, SCURITTY_ATTRIBUTES) );
     if pipeHandle == INVALID_HANDLE_VALUE then
-        -- logger.log();
-        -- ffiLib.C.MessageBoxA(nil, "PIPE " + PIPE_NAME + "CREATION FAILED WITH ERROR: " + ffiLib.C.GetLastError(), "ERROR", 0);
+        logManager.writeToLog(this, "CALL OF CreateNamedPipeA() FAILED WITH ERRORE CODE: " .. ffiLib.C.GetLastError());
         return false;
     else
         return true;
@@ -181,10 +183,10 @@ local function closeHandle()
 
         local result = ffiLib.C.CloseHandle(pipeHandle);
         if result == 0 then
-            -- ffiLib.C.MessageBoxA(nil, "PIPE " + PIPE_NAME + "CLOSING OF HANDLE FAILED WITH ERROR: " + ffiLib.C.GetLastError(), "ERROR", 0);
-            -- logger.log();
+            logManager.writeToLog(this, "CALL OF CloseHandle(pipeHandle) FAILED WITH ERRORE CODE: " .. ffiLib.C.GetLastError());
             return false;
         else
+            logManager.writeToLog(this, "SERVER CLOSED PIPE HANDLE SUCCESSFULLY");
             return true;
         end;
 
@@ -201,11 +203,20 @@ end;
 ---------------------------------------------------------------------------------------
 local function waitForClientConnection()
 
+    logManager.writeToLog(this, "SERVER WAITS FOR SOMEONE CONNECTED");
     while isServerStoped ~= true do
-          if lpOverlapped.Internal ~= STATUS_PENDING then
+          if lpOverlapped[0].Internal ~= STATUS_PENDING then
                 break;
           end;
     end;
+
+    if isServerStoped == true then
+        logManager.writeToLog(this, "SERVER WAS STOPPED BEFORE SOMEONE CONNECTS");
+        return false;
+    end;
+
+    logManager.writeToLog(this, "SOMEONE CONNECTED TO SERVER");
+    return true;
 
 end;
 
@@ -259,10 +270,11 @@ end;
 ---------------------------------------------------------------------------------------
 local function waitForOperationEnd(overlappedStruct)
 
+    logManager.writeToLog(this, "START WAIT FOR THE END OF ASYNC IO OPERATION");
     while isServerStoped ~= true do
-        if overlappedStruct.Internal ~= STATUS_PENDING then break end;
+        if overlappedStruct[0].Internal ~= STATUS_PENDING then break end;
     end;
-
+    logManager.writeToLog(this, "END WAIT FOR THE END OF ASYNC IO OPERATION");
 end;
 
 
@@ -273,37 +285,22 @@ end;
 ---------------------------------------------------------------------------------------
 local function readMessage()
 
+    logManager.writeToLog(this, "STARTING SYNC READ IO OPERATION");
+
     local request;
-    local overlappedStruct = ffiLib.new("OVERLAPPED");
-    --local result = ffiLib.C.ReadFile(pipeHandle, readBuffer, IN_BUFFER_SIZE, countOfBytesRead, overlappedStruct);
-    local result = ffiLib.C.ReadFile(pipeHandle, readBuffer, IN_BUFFER_SIZE, countOfBytesRead, overlappedStruct);
-    if result ~= 0 then
+    local result = ffiLib.C.ReadFile(pipeHandle, readBuffer, IN_BUFFER_SIZE, countOfBytesRead, nil);
+    logManager.writeToLog(this, "SERVER RECEIVE COUNT OF BYTES IN REQUEST: " .. countOfBytesRead[0]);
 
-        request = readRequestFromBuffer(readBuffer, countOfBytesRead[0]);
-        --ffiLib.C.FlushFileBuffers(pipeHandle);
-
+    if result == 0 and countOfBytesRead[0] == 0  then
+        return request;
     else
-
-        local error = ffiLib.C.GetLastError();
-        if error == ERROR_IO_PENDING then
-
-            waitForOperationEnd(overlappedStruct);
-            request = readRequestFromBuffer(readBuffer, countOfBytesRead[0]);
-            --ffiLib.C.FlushFileBuffers(pipeHandle);
-
-        else
-
-            -- read operation failed for some reason
-            -- logger.log(error);
-
-        end;
-
+        request = ffiLib.string(readBuffer);
     end;
 
+    logManager.writeToLog(this, "END SYNC READ IO OPERATION");
     return request;
 
 end;
-
 
 
 
@@ -313,33 +310,25 @@ end;
 ---------------------------------------------------------------------------------------
 local function writeMessage(response)
 
-    local overlappedStruct = ffiLib.new("OVERLAPPED");
-    ffiLib.C.MessageBoxA(nil, "After ffiLib.C.WriteFile" .. "RESPONSE: " .. response .. "RESPONSE LENGTH:" .. string.len(response) .. " LAST ERROR: " .. ffiLib.C.GetLastError(), "DUBUG", 0);
-    local result = ffiLib.C.WriteFile(pipeHandle, response, string.len(response), readBufferLength, lpOverlapped);
-    --ffiLib.C.FlushFileBuffers(pipeHandle);
-    --ffiLib.C.MessageBoxA(nil, "After ffiLib.C.FlushFileBuffers" .. " LAST ERROR: " .. ffiLib.C.GetLastError(), "DUBUG", 0);
+    logManager.writeToLog(this, "STARTING ASYNC WRITE IO OPERATION");
 
-    --[[
-    if result ~= 0 then
+    local overlappedStruct = ffiLib.new("OVERLAPPED[1]");
+    local result = ffiLib.C.WriteFile(pipeHandle, response, string.len(response), readBufferLength, overlappedStruct);
+    local error = ffiLib.C.GetLastError();
 
-        ffiLib.C.FlushFileBuffers(pipeHandle);
+    if result == 0 then
 
-    else
-
-        local error = ffiLib.C.GetLastError();
         if error == ERROR_IO_PENDING then
-
             waitForOperationEnd(overlappedStruct);
-            ffiLib.C.FlushFileBuffers(pipeHandle);
-
         else
-
-            -- write operation failed for some reason
-            -- logger.log(error);
-
+            logManager.writeToLog(this, "ASYNC WRITE FAILED WITH ERROR CODE: " .. error);
         end;
 
-    end;]]
+    end;
+    ffiLib.C.FlushFileBuffers(pipeHandle);
+
+    logManager.writeToLog(this, "WRITE RESPONSE WITH LENGTH: " .. string.len(response) .. " readBufferLength: " .. readBufferLength[0]);
+    logManager.writeToLog(this, "END ASYNC WRITE IO OPERATION");
 
 end;
 
@@ -359,6 +348,9 @@ end;
 -- __cdecl mneas, that args of function are pushed into the stack in reverse order and call stack is cleaned by caller
 ---------------------------------------------------------------------------------------
 function ServerModule : init()
+
+    logManager.createLog(this, getScriptPath());
+    logManager.writeToLog(this, "START EXECUTE SERVER INITIALIZATIO");
 
     dllLibs.__cdecl = assert(ffiLib.load("kernel32"));
 
@@ -396,8 +388,11 @@ function ServerModule : init()
                     int WriteFile(HANDLE hFile, const char *lpBuffer, int nNumberOfBytesToWrite, int *lpNumberOfBytesWritten, OVERLAPPED* lpOverlapped);
                     int ReadFile(HANDLE hFile, PVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, OVERLAPPED* lpOverlapped);
     ]];
-    lpOverlapped = ffiLib.new("OVERLAPPED");
+
+    lpOverlapped = ffiLib.new("OVERLAPPED[1]");
     isServerInitSuccess = createPipe();
+
+    logManager.writeToLog(this, "END EXECUTE SERVER INITIALIZATIO");
 
 end;
 
@@ -405,37 +400,32 @@ end;
 
 ---------------------------------------------------------------------------------------
 -- Waits for client to connect
--- @return:
--- true - if success
--- false - if fail
+--
 ---------------------------------------------------------------------------------------
 function ServerModule : connect()
 
-        local immediateConnectResult = assert( ffiLib.C.ConnectNamedPipe(pipeHandle, lpOverlapped) );
-        if immediateConnectResult ~= 0 then
-
-            waitForClientConnection();
-            --isServerConnected = checkConnection();
+        local result = ffiLib.C.ConnectNamedPipe(pipeHandle, lpOverlapped);
+        local lastError = ffiLib.C.GetLastError();
+        if result ~= 0 then
             isServerConnected = true;
-
         else
 
             -- This means that we have troubles with pipe's descriptor and we need to analize GetLastError() result.
-            local lastError = ffiLib.C.GetLastError();
             if lastError == ERROR_IO_PENDING then
 
                 -- According to https://msdn.microsoft.com/en-us/library/aa365603(v=VS.85).aspx:
                 -- This error means that IO operation is still in progress and we need to wait until someone connect
-                waitForClientConnection();
-                isServerConnected = true; -- checkConnection();
+                logManager.writeToLog(this, "CALL OF ConnectNamedPipe(pipeHandle, lpOverlapped) FAILED WITH ERROR_IO_PENDING");
+                isServerConnected = waitForClientConnection(); -- checkConnection();
 
             elseif lastError == ERROR_PIPE_CONNECTED then
 
                 -- This means that client is already connected
+                logManager.writeToLog(this, "CALL OF ConnectNamedPipe(pipeHandle, lpOverlapped) FAILED WITH ERROR_PIPE_CONNECTED");
                 isServerConnected = true;
 
             else
-                -- ConnectNamedPipe() failed
+                logManager.writeToLog(this, "CALL OF ConnectNamedPipe(pipeHandle, lpOverlapped) FAILED WITH ERRORE CODE: " .. lastError);
                 isServerConnected = false;
             end;
 
@@ -456,12 +446,17 @@ function ServerModule : disconnet()
     -- 2. Wait for a response on how the message is received.
 
     -- 3. Flush all data buffers
-    ffiLib.C.FlushFileBuffers(pipeHandle);
+    --ffiLib.C.FlushFileBuffers(pipeHandle);
 
     -- 4. Clear pipe's handle by call of DisconnectNamedPipe()
     ffiLib.C.DisconnectNamedPipe(pipeHandle);
 end;
 
+
+
+local serverMode = 0;
+local clientRequest;
+local serverResponse;
 
 ---------------------------------------------------------------------------------------
 -- Executes server main loop
@@ -471,41 +466,43 @@ function ServerModule : run()
 
     if isServerInitSuccess == true then
 
-        ServerModule.connect();
-        if isServerConnected == true then
+        while isServerStoped ~= true do
 
-            --local counter = 1;
-            while isServerStoped ~= true do
+            if serverMode == 0 then
+
+                ServerModule.connect();
+                if isServerConnected == true then
+                    serverMode = 1;
+                end;
+
+            elseif serverMode == 1 then
 
                 local request = readMessage();
-
-                --ffiLib.C.MessageBoxA(nil, request, "DEBUG", 0);
-                --if request ~= nil then
                 if request ~= nil then
-                    --ffiLib.C.MessageBoxA(nil, request, "REQUEST MESSAGE", 0);
-                    local response = requestManager.processRequest(self, request);
-                    writeMessage(response);
+
+                    if request == "CLIENT_OFF" then
+                        ServerModule.disconnet();
+                        serverMode = 0;
+                    else
+                        clientRequest = request;
+                        serverMode = 2;
+                    end;
+
                 end;
-                sleep(1);
 
-                --[[local request = "HELLO CLIENT FROM QUIK SERVER";
-                local response = requestManager.processRequest(self, request);
+            elseif serverMode == 2 then
+
+                local response = requestManager.processRequest(self, clientRequest);
+                logManager.writeToLog(this, "SERVER FORM THE RESPONSE: " .. response);
                 writeMessage(response);
-                sleep(1000);
-
-                if counter == 10 then
-                    sleep(10000);
-                    break;
-                else
-                    counter = counter + 1;
-                end;]]
+                serverMode = 1;
 
             end;
-            closeHandle();
+            sleep(1);
 
-        else
-            closeHandle();
         end;
+        closeHandle();
+        logManager.closeLog();
 
     end;
 
@@ -520,7 +517,7 @@ function ServerModule : stop()
     -- 1. Disconnect client
     -- 2. Close handle
     isServerStoped = true;
-    closeHandle();
+
 end;
 
 
@@ -543,6 +540,58 @@ end
 function ServerModule : isServerStoped()
     return isServerStoped;
 end
+
+
+
+
+
+
+-- Async read failed to read somethig for some reason
+--[[
+local function readMessage()
+
+    logManager.writeToLog(this, "STARTING ASYNC READ IO OPERATION");
+
+    local request;
+    local overlappedStruct = ffiLib.new("OVERLAPPED[1]");
+    local result = ffiLib.C.ReadFile(pipeHandle, readBuffer, IN_BUFFER_SIZE, countOfBytesRead, overlappedStruct);
+    local error = ffiLib.C.GetLastError();
+    if result ~= 0 then
+
+        request = readRequestFromBuffer(readBuffer, countOfBytesRead[0]);
+        --ffiLib.C.FlushFileBuffers(pipeHandle);
+        logManager.writeToLog(this, "ASYNC READ IO RETURNS IMMEDIATE.");
+
+    else
+
+        if error == ERROR_IO_PENDING then
+
+            logManager.writeToLog(this, "ASYNC READ IO RETURNS ERROR_IO_PENDING. WAITING...");
+            waitForOperationEnd(overlappedStruct);
+            request = readRequestFromBuffer(readBuffer, countOfBytesRead[0]);
+            --ffiLib.C.FlushFileBuffers(pipeHandle);
+
+        elseif error == 109 then
+
+            request = "CLIENT_OFF";
+
+        else
+
+            -- read operation failed for some reason
+            logManager.writeToLog(this, "ASYNC READ IO OPERATION FAILED WITH ERRORE CODE: " .. error);
+
+        end;
+
+    end;
+
+    logManager.writeToLog(this, "END ASYNC READ IO OPERATION");
+
+    return request;
+
+end;
+]]
+
+
 
 -- End of the module
 return ServerModule;
