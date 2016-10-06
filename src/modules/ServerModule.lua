@@ -270,11 +270,11 @@ end;
 ---------------------------------------------------------------------------------------
 local function waitForOperationEnd(overlappedStruct)
 
-    logManager.writeToLog(this, "START WAIT FOR THE END OF ASYNC IO OPERATION");
+    --logManager.writeToLog(this, "START WAIT FOR THE END OF ASYNC IO OPERATION");
     while isServerStoped ~= true do
         if overlappedStruct[0].Internal ~= STATUS_PENDING then break end;
     end;
-    logManager.writeToLog(this, "END WAIT FOR THE END OF ASYNC IO OPERATION");
+    --logManager.writeToLog(this, "END WAIT FOR THE END OF ASYNC IO OPERATION");
 end;
 
 
@@ -285,11 +285,11 @@ end;
 ---------------------------------------------------------------------------------------
 local function readMessage()
 
-    logManager.writeToLog(this, "STARTING SYNC READ IO OPERATION");
+    --logManager.writeToLog(this, "STARTING SYNC READ IO OPERATION");
 
     local request;
     local result = ffiLib.C.ReadFile(pipeHandle, readBuffer, IN_BUFFER_SIZE, countOfBytesRead, nil);
-    logManager.writeToLog(this, "SERVER RECEIVE COUNT OF BYTES IN REQUEST: " .. countOfBytesRead[0]);
+    --logManager.writeToLog(this, "SERVER RECEIVE COUNT OF BYTES IN REQUEST: " .. countOfBytesRead[0]);
 
     if result == 0 and countOfBytesRead[0] == 0  then
         return request;
@@ -297,7 +297,7 @@ local function readMessage()
         request = ffiLib.string(readBuffer);
     end;
 
-    logManager.writeToLog(this, "END SYNC READ IO OPERATION");
+    --logManager.writeToLog(this, "END SYNC READ IO OPERATION");
     return request;
 
 end;
@@ -310,7 +310,7 @@ end;
 ---------------------------------------------------------------------------------------
 local function writeMessage(response)
 
-    logManager.writeToLog(this, "STARTING ASYNC WRITE IO OPERATION");
+    --logManager.writeToLog(this, "STARTING ASYNC WRITE IO OPERATION");
 
     local overlappedStruct = ffiLib.new("OVERLAPPED[1]");
     local result = ffiLib.C.WriteFile(pipeHandle, response, string.len(response), readBufferLength, overlappedStruct);
@@ -327,8 +327,8 @@ local function writeMessage(response)
     end;
     ffiLib.C.FlushFileBuffers(pipeHandle);
 
-    logManager.writeToLog(this, "WRITE RESPONSE WITH LENGTH: " .. string.len(response) .. " readBufferLength: " .. readBufferLength[0]);
-    logManager.writeToLog(this, "END ASYNC WRITE IO OPERATION");
+    --logManager.writeToLog(this, "WRITE RESPONSE WITH LENGTH: " .. string.len(response) .. " readBufferLength: " .. readBufferLength[0]);
+    --logManager.writeToLog(this, "END ASYNC WRITE IO OPERATION");
 
 end;
 
@@ -493,7 +493,7 @@ function ServerModule : run()
             elseif serverMode == 2 then
 
                 local response = requestManager.processRequest(self, clientRequest);
-                logManager.writeToLog(this, "SERVER FORM THE RESPONSE: " .. response);
+                --logManager.writeToLog(this, "SERVER FORM THE RESPONSE: " .. response);
                 writeMessage(response);
                 serverMode = 1;
 

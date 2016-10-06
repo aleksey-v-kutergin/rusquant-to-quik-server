@@ -1,19 +1,16 @@
----------------------------------------------------------------------------------------
--- RequestManager.lua
--- Author: Aleksey Kutergin <aleksey.v.kutergin@gmail.com>
--- Company: rusquant.ru
--- Date: 13.09.2016
----------------------------------------------------------------------------------------
--- This module contains logic for request's processing
---
----------------------------------------------------------------------------------------
-
--- src.modules.RequestManager
-
-local RequestManager = {};
-
 local jsonParser = assert( require "modules.JSON" );
 
+-- local val = jsonParser: decode('{ "what": "books", "count": 3 }');
+local request = jsonParser: decode('{"id":2,"time":1475240545207,"type":"GET","subject":"ECHO","body":{"echoMessage":"RUSQUANT TEST MESSAGE: 1"}}');
+
+
+--local rawJson = jsonParser: encode_pretty(val);
+
+--print(rawJson)
+
+-- request processing:
+
+--
 
 
 ---------------------------------------------------------------------------------------
@@ -70,15 +67,13 @@ local function getECHOResponse(request)
     if reuqestBody["echoMessage"] ~= nil then
         response["status"] = "SUCCESS";
         local responseBody = {};
-        responseBody["type"] = "EchoResponseBody";
-        responseBody["echoAnswer"] = "@ECHO: " .. reuqestBody["echoMessage"];
+        responseBody["echoMessage"] = "@ECHO: " .. reuqestBody["echoMessage"];
         response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS. ECHO REQUEST MUST CONTAIN NOT NULL echoMessage PARAMETER!";
     end;
 
-    response["sendingTimeOfResponseAtClient"] = os.time();
     return response;
 
 end;
@@ -111,43 +106,25 @@ end;
 
 
 
----------------------------------------------------------------------------------------
--- Process the request from pipe's client
---
----------------------------------------------------------------------------------------
-function RequestManager : processRequest(rawJSONRequest)
+function processRequest(request)
 
-    local request = jsonParser: decode(rawJSONRequest);
-    local response;
-    local rawJSONResponse;
-
-    if request ~= nill and validateRequest(request) then
+    if validateRequest(request) then
 
         local type = request["type"];
         if type == "GET" then
-            response = processGET(request);
+            return processGET(request);
         elseif type == "POST" then
-            response = processPOST(request);
+            return processPOST(request);
         else
             --logger.log("UNKNOWN TYPE OF REQUEST" .. jsonParser: encode_pretty(request));
+            return nil;
         end;
 
     end;
 
-    if response ~= nil then
-        rawJSONResponse = jsonParser: encode(response);
-    end;
-    return rawJSONResponse;
-
 end;
 
 
-
----------------------------------------------------------------------------------------
--- Process the request from pipe's client
---
----------------------------------------------------------------------------------------
-
-
--- End of RequestManager module
-return RequestManager;
+local response = processRequest(request);
+local rawJson = jsonParser: encode_pretty(response);
+print(rawJson);
