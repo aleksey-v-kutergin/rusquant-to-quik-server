@@ -15,6 +15,14 @@ local RequestManager = {};
 local jsonParser = assert( require "modules.JSON" );
 
 
+---------------------------------------------------------------------------------------
+-- Module variables
+--
+---------------------------------------------------------------------------------------
+
+-- State of connection from QUIK terminal to broker server
+local isTerminalConnected = false;
+
 
 ---------------------------------------------------------------------------------------
 -- Incoming request validation
@@ -147,6 +155,11 @@ end;
 -- Process the request from pipe's client
 --
 ---------------------------------------------------------------------------------------
+
+
+function RequestManager : setQUIKToBrokerConnectionFlag(isConnected)
+    isTerminalConnected = isConnected;
+end;
 
 
 -- End of RequestManager module

@@ -9,7 +9,6 @@
 ---------------------------------------------------------------------------------------
 
 -- @module src.modules.ServerModule
-
 local ServerModule = {}; -- public interface
 
 
@@ -63,14 +62,6 @@ local PIPE_TYPE_MESSAGE = 0x00000004;
 -- Data is read from the pipe as stream of messages.
 local PIPE_READMODE_MESSAGE = 0x00000002;
 
--- Enables blocking mode.
--- When pipe handle is pecified in ReadFile, WriteFile or ConnectNamedPipe functions, the operations are not completed until there is data to read, all data is written, or a client is connected
-local PIPE_WAIT = 0x00000000;
-
--- Enables unblocking mode.
--- In this mode ReadFile, WriteFile and CinnectNamedPipe always return immediately
-local PIPE_NOWAIT = 0x00000001;
-
 -- Connections from remote clients are automatically rejected
 local PIPE_REJECT_REMOTE_CLIENTS = 0x00000008;
 
@@ -114,19 +105,27 @@ local pipeHandle;
 local lpOverlapped;
 
 -- Buffer for incoming data
--- local readBuffer = ffiLib.new("char[?]", IN_BUFFER_SIZE);
-local readBuffer = ffiLib.new("char [4*1024]");
-local readBufferLength = ffiLib.new("unsigned long[1]", 1);
-local countOfBytesRead = ffiLib.new("unsigned long[1]", 1); -- lua from C type's conversion specific
+local readBuffer = ffiLib.new("char[?]", IN_BUFFER_SIZE);
+local readBufferLength = ffiLib.new("unsigned long[?]", 1);
+local countOfBytesRead = ffiLib.new("unsigned long[?]", 1); -- lua from C type's conversion specific
 
+-- Server state flags
 local isServerInitSuccess = false;
 local isServerConnected = false;
 local isServerStoped = false;
 
-
+-- txt file for temporal form of logging process
 local serverLogFile;
 
+-- Server switches between three modes:
+-- Mode 0 - Server waits for incoming client's connections
+-- Mode 1 - Server wiats for a incoming requests from client
+-- Mode 2 - Server process request and writes corresponding response
+local serverMode = 0;
 
+-- Incoming request and outcoming response. Used in server's main loop.
+local clientRequest;
+local serverResponse;
 
 ---------------------------------------------------------------------------------------
 -- Pipe ERRORS and ERROR CODES
@@ -136,8 +135,7 @@ local INVALID_HANDLE_VALUE = assert( ffiLib.cast("void*", -1) );
 local ERROR_PIPE_CONNECTED = 535;
 local STATUS_PENDING = 259;
 local ERROR_IO_PENDING = 997;
-local ERROR_NO_DATA = 232;
-local ERROR_PIPE_LISTENING = 536;
+local ERROR_BROKEN_PIPE = 109;
 
 
 
@@ -230,7 +228,7 @@ end;
 -- true - if connection is OK
 -- false - else
 ---------------------------------------------------------------------------------------
-local function checkConnection()
+--[[local function checkConnection()
 
     -- According to docs, a new instance of OVERLAPPED structure has to be used for each asynchroniouse call
     local overaptStruct = ffiLib.new("OVERLAPPED");
@@ -243,7 +241,7 @@ local function checkConnection()
     else
         return false;
     end;
-end;
+end;]]
 
 
 
@@ -270,11 +268,10 @@ end;
 ---------------------------------------------------------------------------------------
 local function waitForOperationEnd(overlappedStruct)
 
-    --logManager.writeToLog(this, "START WAIT FOR THE END OF ASYNC IO OPERATION");
     while isServerStoped ~= true do
         if overlappedStruct[0].Internal ~= STATUS_PENDING then break end;
     end;
-    --logManager.writeToLog(this, "END WAIT FOR THE END OF ASYNC IO OPERATION");
+
 end;
 
 
@@ -289,9 +286,13 @@ local function readMessage()
 
     local request;
     local result = ffiLib.C.ReadFile(pipeHandle, readBuffer, IN_BUFFER_SIZE, countOfBytesRead, nil);
-    --logManager.writeToLog(this, "SERVER RECEIVE COUNT OF BYTES IN REQUEST: " .. countOfBytesRead[0]);
+    local error = ffiLib.C.GetLastError();
 
     if result == 0 and countOfBytesRead[0] == 0  then
+        --logManager.writeToLog(this, "SYNC READ IO OPERATION FAILED WITH ERROR: " .. error);
+        if error == ERROR_BROKEN_PIPE then
+            request = "CLIENT_OFF";
+        end;
         return request;
     else
         request = ffiLib.string(readBuffer);
@@ -311,7 +312,7 @@ end;
 local function writeMessage(response)
 
     --logManager.writeToLog(this, "STARTING ASYNC WRITE IO OPERATION");
-
+    local result;
     local overlappedStruct = ffiLib.new("OVERLAPPED[1]");
     local result = ffiLib.C.WriteFile(pipeHandle, response, string.len(response), readBufferLength, overlappedStruct);
     local error = ffiLib.C.GetLastError();
@@ -320,13 +321,15 @@ local function writeMessage(response)
 
         if error == ERROR_IO_PENDING then
             waitForOperationEnd(overlappedStruct);
+        elseif error == ERROR_BROKEN_PIPE then
+            result = "CLIENT_OFF";
         else
             logManager.writeToLog(this, "ASYNC WRITE FAILED WITH ERROR CODE: " .. error);
         end;
 
     end;
     ffiLib.C.FlushFileBuffers(pipeHandle);
-
+    return result;
     --logManager.writeToLog(this, "WRITE RESPONSE WITH LENGTH: " .. string.len(response) .. " readBufferLength: " .. readBufferLength[0]);
     --logManager.writeToLog(this, "END ASYNC WRITE IO OPERATION");
 
@@ -350,7 +353,7 @@ end;
 function ServerModule : init()
 
     logManager.createLog(this, getScriptPath());
-    logManager.writeToLog(this, "START EXECUTE SERVER INITIALIZATIO");
+    logManager.writeToLog(this, "START EXECUTE SERVER INITIALIZATION");
 
     dllLibs.__cdecl = assert(ffiLib.load("kernel32"));
 
@@ -391,8 +394,7 @@ function ServerModule : init()
 
     lpOverlapped = ffiLib.new("OVERLAPPED[1]");
     isServerInitSuccess = createPipe();
-
-    logManager.writeToLog(this, "END EXECUTE SERVER INITIALIZATIO");
+    logManager.writeToLog(this, "END EXECUTE SERVER INITIALIZATION");
 
 end;
 
@@ -442,28 +444,22 @@ end;
 -- false - if fail
 ---------------------------------------------------------------------------------------
 function ServerModule : disconnet()
-    -- 1. Send warn to client
-    -- 2. Wait for a response on how the message is received.
 
-    -- 3. Flush all data buffers
-    --ffiLib.C.FlushFileBuffers(pipeHandle);
-
-    -- 4. Clear pipe's handle by call of DisconnectNamedPipe()
+    logManager.writeToLog(this, "CLIENT IS DICONNECTED FROM PIPE!");
+    isServerConnected = false;
+    ffiLib.C.FlushFileBuffers(pipeHandle);
     ffiLib.C.DisconnectNamedPipe(pipeHandle);
+
 end;
 
 
 
-local serverMode = 0;
-local clientRequest;
-local serverResponse;
 
 ---------------------------------------------------------------------------------------
 -- Executes server main loop
 --
 ---------------------------------------------------------------------------------------
 function ServerModule : run()
-
     if isServerInitSuccess == true then
 
         while isServerStoped ~= true do
@@ -479,7 +475,6 @@ function ServerModule : run()
 
                 local request = readMessage();
                 if request ~= nil then
-
                     if request == "CLIENT_OFF" then
                         ServerModule.disconnet();
                         serverMode = 0;
@@ -487,15 +482,18 @@ function ServerModule : run()
                         clientRequest = request;
                         serverMode = 2;
                     end;
-
                 end;
 
             elseif serverMode == 2 then
 
                 local response = requestManager.processRequest(self, clientRequest);
-                --logManager.writeToLog(this, "SERVER FORM THE RESPONSE: " .. response);
-                writeMessage(response);
-                serverMode = 1;
+                local result = writeMessage(response);
+                if result == "CLIENT_OFF" then
+                    ServerModule.disconnet();
+                    serverMode = 0;
+                else
+                    serverMode = 1;
+                end;
 
             end;
             sleep(1);
@@ -505,7 +503,6 @@ function ServerModule : run()
         logManager.closeLog();
 
     end;
-
 end;
 
 
@@ -514,10 +511,8 @@ end;
 --
 ---------------------------------------------------------------------------------------
 function ServerModule : stop()
-    -- 1. Disconnect client
-    -- 2. Close handle
+    logManager.writeToLog(this, "OnStop() CALLBACK HAS BEEN CALLED!");
     isServerStoped = true;
-
 end;
 
 
@@ -541,6 +536,15 @@ function ServerModule : isServerStoped()
     return isServerStoped;
 end
 
+
+function ServerModule : setQUIKToBrokerConnectionFlag(isConnected)
+    if isConnected == true then
+        logManager.writeToLog(this, "OnConnected() CALLBACK HAS BEEN CALLED!");
+    else
+        logManager.writeToLog(this, "OnDisconnected() CALLBACK HAS BEEN CALLED!");
+    end;
+    requestManager.setQUIKToBrokerConnectionFlag(this, isConnected);
+end;
 
 
 

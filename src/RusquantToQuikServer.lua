@@ -20,11 +20,6 @@ local serverModule = assert( require "modules.ServerModule" );
 -- Test code
 ---------------------------------------------------------------------------------------
 
---serverModule.init();
---serverModule.connect();
---serverModule.stop();
-
-
 ---------------------------------------------------------------------------------------
 -- QUIK Terminal calls this function before main.
 -- Therefore, it is logical to perform all init operations here
@@ -51,4 +46,31 @@ end;
 ---------------------------------------------------------------------------------------
 function OnStop()
     serverModule.stop();
+end;
+
+
+---------------------------------------------------------------------------------------
+-- Callback for terminal exiting event.
+--
+---------------------------------------------------------------------------------------
+function OnClose()
+    serverModule.stop();
+end;
+
+
+---------------------------------------------------------------------------------------
+-- Callback for terminal connects to broker's server event.
+--
+---------------------------------------------------------------------------------------
+function OnConnected()
+    serverModule.setQUIKToBrokerConnectionFlag(true);
+end;
+
+
+---------------------------------------------------------------------------------------
+-- Callback for terminal lost connection to broker's server event.
+--
+---------------------------------------------------------------------------------------
+function OnDisconnected()
+    serverModule.setQUIKToBrokerConnectionFlag(false);
 end;
