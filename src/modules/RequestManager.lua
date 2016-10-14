@@ -77,9 +77,15 @@ local function getECHOResponse(request)
 
     if reuqestBody["echoMessage"] ~= nil then
         response["status"] = "SUCCESS";
+
         local responseBody = {};
         responseBody["type"] = "EchoResponseBody";
-        responseBody["echoAnswer"] = "@ECHO: " .. reuqestBody["echoMessage"];
+
+        local echo = {};
+        echo["type"] = "Echo";
+        echo["echoAnswer"] = "@ECHO: " .. reuqestBody["echoMessage"];
+
+        responseBody["echo"] = echo;
         response["body"] = responseBody;
     else
         response["status"] = "FAILED";

@@ -3,8 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="a74e8a6a-1335-4622-9448-4ae5351b82d4" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/modules/RequestManager.lua" afterPath="$PROJECT_DIR$/src/modules/RequestManager.lua" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/RusquantToQuikServer.lua" afterPath="$PROJECT_DIR$/src/RusquantToQuikServer.lua" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/modules/ServerModule.lua" afterPath="$PROJECT_DIR$/src/modules/ServerModule.lua" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="RusquantToQuikServer.iws" />
@@ -38,11 +36,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="RequestManager.lua" pinned="false" current-in-tab="false">
+      <file leaf-file-name="RequestManager.lua" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/modules/RequestManager.lua">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="24" column="0" selection-start-line="24" selection-start-column="0" selection-end-line="24" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.64659274">
+              <caret line="85" column="21" selection-start-line="85" selection-start-column="21" selection-end-line="85" selection-end-column="21" />
               <folding />
             </state>
           </provider>
@@ -58,11 +56,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ServerModule.lua" pinned="false" current-in-tab="true">
+      <file leaf-file-name="ServerModule.lua" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/modules/ServerModule.lua">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.16915423">
-              <caret line="470" column="0" selection-start-line="470" selection-start-column="0" selection-end-line="470" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="115" column="0" selection-start-line="115" selection-start-column="0" selection-end-line="115" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -93,8 +91,8 @@
         <option value="$PROJECT_DIR$/src/modules/LogManager.lua" />
         <option value="$PROJECT_DIR$/src/test.lua" />
         <option value="$PROJECT_DIR$/src/RusquantToQuikServer.lua" />
-        <option value="$PROJECT_DIR$/src/modules/RequestManager.lua" />
         <option value="$PROJECT_DIR$/src/modules/ServerModule.lua" />
+        <option value="$PROJECT_DIR$/src/modules/RequestManager.lua" />
       </list>
     </option>
   </component>
@@ -113,10 +111,10 @@
     <order />
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="-8" />
+    <option name="x" value="-1928" />
     <option name="y" value="-8" />
     <option name="width" value="1936" />
-    <option name="height" value="1056" />
+    <option name="height" value="1096" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true">
     <OptionsSetting value="true" id="Add" />
@@ -141,9 +139,9 @@
       <sortByType />
     </navigator>
     <panes>
-      <pane id="Scratches" />
-      <pane id="Scope" />
       <pane id="PackagesPane" />
+      <pane id="Scope" />
+      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -202,7 +200,7 @@
     <property name="GoToFile.includeJavaFiles" value="false" />
     <property name="GoToClass.toSaveIncludeLibraries" value="false" />
     <property name="MemberChooser.sorted" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../rusquant-to-quik-api" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="MemberChooser.showClasses" value="true" />
     <property name="GoToClass.includeLibraries" value="false" />
     <property name="MemberChooser.copyJavadoc" value="false" />
@@ -509,7 +507,8 @@
       <workItem from="1475476218959" duration="20614000" />
       <workItem from="1475732654198" duration="1493000" />
       <workItem from="1475824345513" duration="10400000" />
-      <workItem from="1475839621391" duration="4429000" />
+      <workItem from="1475839621391" duration="4729000" />
+      <workItem from="1476423445881" duration="1475000" />
     </task>
     <task id="LOCAL-00001" summary="/* README edit */">
       <created>1470720965177</created>
@@ -553,23 +552,29 @@
       <option name="project" value="LOCAL" />
       <updated>1475740041463</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="/*  Finished processing for the client's sudden disconnections. Add processing for OnConnected(),  OnDisconnected(), OnClose() callbacks. Code cleanup.  */">
+      <created>1475844234325</created>
+      <option name="number" value="00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1475844234325</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="199375000" />
+    <option name="totallyTimeSpent" value="201150000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
+    <frame x="-1928" y="-8" width="1936" height="1096" extended-state="6" />
     <editor active="false" />
     <layout>
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Palette&#9;" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.31783783" sideWeight="0.5362473" order="7" side_tool="true" content_ui="tabs" />
+      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.31709844" sideWeight="0.53837955" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.31783783" sideWeight="0.46375266" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.22462203" sideWeight="0.45095947" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.31709844" sideWeight="0.46162048" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.21450777" sideWeight="0.4466951" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.18976545" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="LuaJ" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
@@ -607,7 +612,8 @@
     <MESSAGE value="/* Server works. It reads messages from pipe and write messages. But async ReadFile() \ WriteFile() execution blocks ReadFile() operation on clint side for some reason  */" />
     <MESSAGE value="/* Achieved  workable echo client-to-server data exchange */" />
     <MESSAGE value="/* Finished JSON support for request-response interaction  */" />
-    <option name="LAST_COMMIT_MESSAGE" value="/* Finished JSON support for request-response interaction  */" />
+    <MESSAGE value="/*  Finished processing for the client's sudden disconnections. Add processing for OnConnected(),  OnDisconnected(), OnClose() callbacks. Code cleanup.  */" />
+    <option name="LAST_COMMIT_MESSAGE" value="/*  Finished processing for the client's sudden disconnections. Add processing for OnConnected(),  OnDisconnected(), OnClose() callbacks. Code cleanup.  */" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
@@ -1018,18 +1024,18 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/modules/RequestManager.lua">
+    <entry file="file://$PROJECT_DIR$/src/modules/ServerModule.lua">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="24" column="0" selection-start-line="24" selection-start-column="0" selection-end-line="24" selection-end-column="0" />
+          <caret line="115" column="0" selection-start-line="115" selection-start-column="0" selection-end-line="115" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/modules/ServerModule.lua">
+    <entry file="file://$PROJECT_DIR$/src/modules/RequestManager.lua">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.16915423">
-          <caret line="470" column="0" selection-start-line="470" selection-start-column="0" selection-end-line="470" selection-end-column="0" />
+        <state vertical-scroll-proportion="0.64659274">
+          <caret line="85" column="21" selection-start-line="85" selection-start-column="21" selection-end-line="85" selection-end-column="21" />
           <folding />
         </state>
       </provider>
