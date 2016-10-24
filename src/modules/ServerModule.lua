@@ -176,7 +176,7 @@ end;
 -- non-zero value - If the function succeeds
 ---------------------------------------------------------------------------------------
 local function closeHandle()
-
+    logManager.writeToLog(this, "WITHIN closeHandle()!");
     if pipeHandle ~= INVALID_HANDLE_VALUE then
 
         local result = ffiLib.C.CloseHandle(pipeHandle);
@@ -496,9 +496,11 @@ function ServerModule : run()
                 end;
 
             end;
+
             sleep(1);
 
         end;
+
         closeHandle();
         logManager.closeLog();
 
@@ -509,10 +511,37 @@ end;
 ---------------------------------------------------------------------------------------
 -- Shutdowns the server
 --
+-- ACTUNG!
+-- It seems that QUIK allocates 5 sec. life-time preriod for main thread
+-- of the executing script after OnStop() callback has been called.
+-- When that period ends, it seems that QUIK terminates execution of script immediately.
+--
+-- Examle:
+-- 1. The is no connected client. In this case ConnectNamedPipe() executes async and waits
+--    for incuming connections by call of waitForClientConnection(), which executes while loop within.
+--    OnStop() callback sets isServerStoped to true and brakes execution of waitForClientConnection().
+--    Then main server loop breaks its execution and call closeHandle() to free resources.
+--
+-- 2. If there is connected client, server switches to read mode and call ReadFile() in blocking mode.
+--    So, call of ReadFile() blocks execution of main thread untile some data arraives.
+--    Then, if user stops server script, the OnStop() callback executes in separate thread and sets
+--    isServerStoped to true, but this has no effect at blocked main thread since it'is still within readMessage() call.
+--    So, when 5 sec. time-out expired, QUIK terminates execution of the script and pipe's handle does not close propertly.
+--    To avoid this, one need to call closeHandle() within OnStop() callback call if server is in read mode.
+--
+-- 3. There is no such effect at write mode since WriteFile() executes async.
+--
 ---------------------------------------------------------------------------------------
 function ServerModule : stop()
+
     logManager.writeToLog(this, "OnStop() CALLBACK HAS BEEN CALLED!");
     isServerStoped = true;
+
+    if serverMode == 1 then
+        closeHandle();
+        logManager.closeLog();
+    end;
+
 end;
 
 
