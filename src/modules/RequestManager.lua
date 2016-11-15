@@ -51,9 +51,9 @@ local function getCommonResponsePart(request)
 
     local response = {};
     response["requestId"]                           =   request["id"];
-    response["sendingTimeOfReuestAtClient"]         =   request["time"];
-    response["timeOfReceiptOfReuestAtServer"]       =   os.time();
-    response["sendingTimeOfResponseAtClient"]       =   os.time();
+    response["sendingTimeOfRequestAtClient"]         =   request["time"];
+    response["timeOfReceiptOfRequestAtServer"]       =   os.time();
+    response["sendingTimeOfResponseAtServer"]       =   os.time();
     response["timeOfReceiptOfResponseAtClient"]     =   os.time();
     response["type"]                                =   request["type"];
     response["subject"]                             =   request["subject"];
@@ -92,7 +92,7 @@ local function getECHOResponse(request)
         response["error"] = "INVALID REQUEST PARAMETERS. ECHO REQUEST MUST CONTAIN NOT NULL echoMessage PARAMETER!";
     end;
 
-    response["sendingTimeOfResponseAtClient"] = os.time();
+    response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
 end;
