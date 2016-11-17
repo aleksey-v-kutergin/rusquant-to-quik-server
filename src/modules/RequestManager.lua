@@ -98,6 +98,32 @@ local function getECHOResponse(request)
 end;
 
 
+
+---------------------------------------------------------------------------------------
+-- Constructs response for connection state of the terminal to QUIK-server request.
+--
+---------------------------------------------------------------------------------------
+local function getConnectionStateResponse(request)
+
+    local response = getCommonResponsePart(request);
+    response["status"] = "SUCCESS";
+
+    local responseBody = {};
+    responseBody["type"] = "ConnectionSateResponseBody";
+
+    local connectionState = {};
+    connectionState["type"] = "ConnectionState";
+    connectionState["isConnected"] = isConnected();
+
+    responseBody["connectionState"] = connectionState;
+    response["body"] = responseBody;
+
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
 ---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
@@ -107,6 +133,9 @@ local function processGET(request)
     local subject = request["subject"];
     if subject == "ECHO" then
         return getECHOResponse(request);
+
+    elseif subject == "CONNECTION_SATE" then
+        return getConnectionStateResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
