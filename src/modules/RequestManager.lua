@@ -124,6 +124,46 @@ local function getConnectionStateResponse(request)
 end;
 
 
+
+---------------------------------------------------------------------------------------
+-- Constructs response for request of the info about terminal.
+--
+---------------------------------------------------------------------------------------
+local function getInfoParameterResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request["body"];
+
+    if reuqestBody["infoParameterName"] ~= nil then
+        response["status"] = "SUCCESS";
+
+        local responseBody = {};
+        responseBody["type"] = "InfoParameterResponseBody";
+
+        local info = {};
+        info["type"] = "InfoParameter";
+        info["parameterName"] = reuqestBody["infoParameterName"];
+
+        local value = getInfoParam(reuqestBody["infoParameterName"]);
+        if value == "" then
+            info["parameterValue"] = "NA";
+        else
+            info["parameterValue"] = value;
+        end;
+
+        responseBody["infoParameter"] = info;
+        response["body"] = responseBody;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS. INFO PARAMETER REQUEST MUST CONTAIN NOT NULL NAME OF THE PARAMETER!";
+    end;
+
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
 ---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
@@ -133,9 +173,10 @@ local function processGET(request)
     local subject = request["subject"];
     if subject == "ECHO" then
         return getECHOResponse(request);
-
     elseif subject == "CONNECTION_SATE" then
         return getConnectionStateResponse(request);
+    elseif subject == "INFO_PARAMETER" then
+        return getInfoParameterResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
