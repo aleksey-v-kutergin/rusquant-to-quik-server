@@ -74,3 +74,30 @@ end;
 function OnDisconnected()
     serverModule.setQUIKToBrokerConnectionFlag(false);
 end;
+
+
+---------------------------------------------------------------------------------------
+-- Callback for transaction.
+--
+---------------------------------------------------------------------------------------
+function OnTransReply(trans_reply)
+    serverModule.cacheTransReplay(this, trans_reply);
+end;
+
+
+---------------------------------------------------------------------------------------
+-- Callback for and order occurance.
+--
+---------------------------------------------------------------------------------------
+function OnOrder(order)
+    serverModule.cacheOrder(this, order);
+end;
+
+
+---------------------------------------------------------------------------------------
+-- Callback for a trade occurance.
+--
+---------------------------------------------------------------------------------------
+function OnTrade(trade)
+    serverModule.cacheTrade(this, trade);
+end;

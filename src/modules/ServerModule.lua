@@ -17,8 +17,11 @@ local ServerModule = {}; -- public interface
 --
 ---------------------------------------------------------------------------------------
 
-local requestManager = assert( require "modules.RequestManager" );
-local logManager = assert( require "modules.LogManager" );
+local jsonParser      = assert( require "modules.JSON" );
+local logManager      = assert( require "modules.LogManager" );
+local requestManager  = assert( require "modules.RequestManager" );
+local cacheManager    = assert( require "modules.CacheManager" );
+local quikDataManager = assert( require "modules.QuikDataManager" );
 
 ---------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------
@@ -394,7 +397,25 @@ function ServerModule : init()
 
     lpOverlapped = ffiLib.new("OVERLAPPED[1]");
     isServerInitSuccess = createPipe();
-    logManager.writeToLog(this, "END EXECUTE SERVER INITIALIZATION");
+    logManager.writeToLog(this, "SUCCESSFULLY INIT PIPE!");
+
+    logManager.writeToLog(this, "TRYING TO SET LOGGER TO MODULES");
+    cacheManager.setLogger(this, logManager);
+    quikDataManager.setLogger(this, logManager);
+    requestManager.setLogger(this, logManager);
+
+    logManager.writeToLog(this, "TRYING TO SET JSON PARSER TO MODULES");
+    quikDataManager.setJsonParser(this, jsonParser);
+    requestManager.setJsonParser(this, jsonParser);
+    cacheManager.setJsonParser(this, jsonParser);
+
+    logManager.writeToLog(this, "TRYING TO SET DATA MANAGER TO MODULES");
+    requestManager.setDataManager(this, quikDataManager);
+
+    logManager.writeToLog(this, "TRYING TO SET CACHE MANAGER TO MODULES");
+    quikDataManager.setCacheManager(this, cacheManager);
+
+    logManager.writeToLog(this, "SUCCESSFULLY DEPENDENCIES FOR MODULES! END SERVER INITIALIZATION");
 
 end;
 
@@ -574,6 +595,40 @@ function ServerModule : setQUIKToBrokerConnectionFlag(isConnected)
     end;
     requestManager.setQUIKToBrokerConnectionFlag(this, isConnected);
 end;
+
+
+
+---------------------------------------------------------------------------------------
+-- For caching objects
+--
+---------------------------------------------------------------------------------------
+
+function ServerModule : cacheTransReplay(transReplay)
+    logManager.writeToLog(this, "OnTransReplay() CALLBACK HAS BEEN CALLED!");
+    cacheManager.cache(this, "TRANS_REPLAY", transReplay);
+end;
+
+
+function ServerModule : cacheOrder(order)
+    logManager.writeToLog(this, "OnOrder() CALLBACK HAS BEEN CALLED!");
+    cacheManager.cache(this, "ORDER", order);
+end;
+
+
+function ServerModule : cacheTrade(trade)
+    logManager.writeToLog(this, "OnеTrade() CALLBACK HAS BEEN CALLED!");
+    cacheManager.cache(this, "TRADE", trade);
+end;
+
+
+
+
+
+
+
+
+
+
 
 
 

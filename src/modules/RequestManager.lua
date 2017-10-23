@@ -9,11 +9,7 @@
 ---------------------------------------------------------------------------------------
 
 -- src.modules.RequestManager
-
 local RequestManager = {};
-
-local jsonParser = assert( require "modules.JSON" );
-
 
 ---------------------------------------------------------------------------------------
 -- Module variables
@@ -23,6 +19,25 @@ local jsonParser = assert( require "modules.JSON" );
 -- State of connection from QUIK terminal to broker server
 local isTerminalConnected = false;
 
+
+local logger;
+local jsonParser;
+local quikDataManager;
+
+function RequestManager : setLogger(externalLogger)
+    logger = externalLogger;
+    logger.writeToLog(this, "LOGGER WITHIN REQUEST MANAGER");
+end;
+
+function RequestManager : setJsonParser(parser)
+    jsonParser = parser;
+    logger.writeToLog(this, "JSON PASER WITHIN REQUEST MANAGER!");
+end;
+
+function RequestManager : setDataManager(manager)
+    quikDataManager = manager;
+    quikDataManager.setJsonParser(this, jsonParser);
+end;
 
 ---------------------------------------------------------------------------------------
 -- Incoming request validation
@@ -51,8 +66,8 @@ local function getCommonResponsePart(request)
 
     local response = {};
     response["requestId"]                           =   request["id"];
-    response["sendingTimeOfRequestAtClient"]         =   request["time"];
-    response["timeOfReceiptOfRequestAtServer"]       =   os.time();
+    response["sendingTimeOfRequestAtClient"]        =   request["time"];
+    response["timeOfReceiptOfRequestAtServer"]      =   os.time();
     response["sendingTimeOfResponseAtServer"]       =   os.time();
     response["timeOfReceiptOfResponseAtClient"]     =   os.time();
     response["type"]                                =   request["type"];
@@ -165,6 +180,41 @@ end;
 
 
 ---------------------------------------------------------------------------------------
+-- Constructs response for send transaction request.
+--
+---------------------------------------------------------------------------------------
+local function getTransactionResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request["body"];
+
+    local transaction = reuqestBody["transaction"];
+    if transaction ~= nil then
+
+        local responseBody = {};
+        responseBody["type"] = "TransactionResponseBody";
+
+        local result = quikDataManager.sendTransaction(this, transaction);
+        if result["status"] ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["transactionReplay"] = result["transReplay"];
+        else
+            response["status"] = "FAILED";
+            response["error"] = result["error"];
+        end;
+        response["body"] = responseBody;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS. TRANSACTION CANNOT BE NULL!";
+    end;
+
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
 ---------------------------------------------------------------------------------------
@@ -190,7 +240,12 @@ end;
 --
 ---------------------------------------------------------------------------------------
 local function processPOST(request)
-    return nil;
+    local subject = request["subject"];
+    if subject == "TRANSACTION" then
+        return getTransactionResponse(request);
+    else
+        --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
+    end;
 end;
 
 
