@@ -215,6 +215,41 @@ end;
 
 
 ---------------------------------------------------------------------------------------
+-- Constructs response for get order request.
+--
+---------------------------------------------------------------------------------------
+local function getOrderResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request["body"];
+
+    if reuqestBody["orderNumber"] ~= nil then
+        response["status"] = "SUCCESS";
+
+        local responseBody = {};
+        responseBody["type"] = "OrderResponseBody";
+
+        local result = quikDataManager.getOrder(this, reuqestBody["orderNumber"], false);
+        if result["status"] ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["order"] = result["order"];
+        else
+            response["status"] = "FAILED";
+            response["error"] = result["error"];
+        end;
+        response["body"] = responseBody;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS. ORDER NUMBER CANNOT BE NULL!";
+    end;
+
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
 ---------------------------------------------------------------------------------------
@@ -227,6 +262,8 @@ local function processGET(request)
         return getConnectionStateResponse(request);
     elseif subject == "INFO_PARAMETER" then
         return getInfoParameterResponse(request);
+    elseif subject == "ORDER" then
+        return getOrderResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;

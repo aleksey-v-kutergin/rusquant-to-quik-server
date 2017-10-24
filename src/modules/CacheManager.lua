@@ -40,7 +40,7 @@ end;
 
 
 local function findTransactionReplay(transId)
-    logger.writeToLog(this, "CHECKING FOR EXISTANCE OF TRANSACTION REPLAY IN CACHE WITHIN!");
+    logger.writeToLog(this, "CHECKING FOR EXISTANCE OF TRANSACTION REPLAY IN CACHE!");
     local cacheItem = trasactionsReplayCache[transId];
     if cacheItem ~= nil then
         trasactionsReplayCache[transId] = nil;
@@ -62,17 +62,19 @@ local ordersCacheSize = 0;
 
 
 local function cacheOrder(order)
-    logger.writeToLog(this, "Caching order: \n" .. jsonParser: encode_pretty(order));
+    logger.writeToLog(this, "CACHING ORDER: \n" .. jsonParser: encode_pretty(order));
     ordersCache[order.order_num] = order;
     ordersCacheSize = ordersCacheSize + 1;
 end;
 
 
 local function findOrder(orderNum)
+    logger.writeToLog(this, "CHECKING FOR EXISTANCE OF THE ORDER IN CACHE!");
     local cacheItem = ordersCache[orderNum];
     if cacheItem ~= nil then
         ordersCache[orderNum] = nil;
         ordersCacheSize = ordersCacheSize - 1;
+        logger.writeToLog(this, "FIND ORDER IN CACHE FOR ORDER NUMBER: " .. orderNum .."!");
     end;
     return cacheItem;
 end;

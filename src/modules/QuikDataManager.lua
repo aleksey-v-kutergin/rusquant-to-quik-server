@@ -167,5 +167,54 @@ end;
 
 
 
+---------------------------------------------------------------------------------------
+-- Section with server-side functionality for orders processing.
+--
+---------------------------------------------------------------------------------------
+
+
+local ORDER_REPLAY_RETRY_COUNT = 10000000;
+
+function QuikDataManager : getOrder(orderNumber, noWait)
+    local order = cacheManager.find(this, "ORDER", orderNumber)
+    local result = {};
+
+    if noWait == true then
+        if order ~= nil then
+            result["status"] = "SUCCESS";
+            result["order"] = order;
+            return result;
+        else
+            result["status"] = "FAILED";
+            result["error"] = "ORDER HAS NOT OCCURED YET!";
+            return result;
+        end;
+    end;
+
+    local counter = 0;
+    while order == nil do
+        order = cacheManager.find(this, "ORDER", orderNumber);
+        if counter > ORDER_REPLAY_RETRY_COUNT then
+            result["status"] = "FAILED";
+            result["error"] = "EXCEEDING RETRY COUNT FOR WAITING OF OCCURANCE OF THE ORDER IN CACHE! ORDER HAS NOT OCCURED YET!";
+            return result;
+        end;
+        counter = counter + 1;
+    end
+
+    result["status"] = "SUCCESS";
+    order["type"] = "Order";
+
+    local dateTime = order["datetime"];
+    dateTime["type"] = "DateTime";
+
+    local withdrawDatetime = order["withdraw_datetime"];
+    withdrawDatetime["type"] = "DateTime";
+
+    result["order"] = order;
+    return result;
+end;
+
+
 -- End of CacheManager module
 return QuikDataManager;
