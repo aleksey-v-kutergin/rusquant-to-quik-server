@@ -279,6 +279,39 @@ local function getTradesResponse(request)
 
 end;
 
+
+---------------------------------------------------------------------------------------
+-- Constructs response for request of the info about terminal.
+--
+---------------------------------------------------------------------------------------
+local function getTableInfoResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    if reuqestBody.tableType ~= nil then
+        response["status"] = "SUCCESS";
+        local responseBody = {};
+        responseBody["type"] = "QuikTableInfoResponseBody";
+
+        local tableInfo = {};
+        tableInfo["type"] = "QuikTableInfo";
+        tableInfo["tableType"] = reuqestBody.tableType;
+        tableInfo["rowsCount"] =  getNumberOf(reuqestBody.tableType);
+
+        responseBody["tableInfo"] = tableInfo;
+        response["body"] = responseBody;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS. INFO PARAMETER REQUEST MUST CONTAIN NOT NULL NAME OF THE PARAMETER!";
+    end;
+
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
 ---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
@@ -296,6 +329,8 @@ local function processGET(request)
         return getOrderResponse(request);
     elseif subject == "TRADE" then
         return getTradesResponse(request);
+    elseif subject == "TABLE_INFO" then
+        return getTableInfoResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
