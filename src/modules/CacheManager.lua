@@ -40,7 +40,6 @@ end;
 
 
 local function findTransactionReplay(transId)
-    logger.writeToLog(this, "CHECKING FOR EXISTANCE OF TRANSACTION REPLAY IN CACHE!");
     local cacheItem = trasactionsReplayCache[transId];
     if cacheItem ~= nil then
         trasactionsReplayCache[transId] = nil;
@@ -72,9 +71,13 @@ local function findOrder(orderNum)
     logger.writeToLog(this, "CHECKING FOR EXISTANCE OF THE ORDER IN CACHE!");
     local cacheItem = ordersCache[orderNum];
     if cacheItem ~= nil then
+        cacheItem["type"] = "Order";
+        cacheItem.datetime["type"] = "DateTime";
+        cacheItem.withdraw_datetime["type"] = "DateTime";
+
         ordersCache[orderNum] = nil;
         ordersCacheSize = ordersCacheSize - 1;
-        logger.writeToLog(this, "FIND ORDER IN CACHE FOR ORDER NUMBER: " .. orderNum .."!");
+        logger.writeToLog(this, "FIND ORDER IN CACHE\n: " .. jsonParser: encode_pretty(cacheItem));
     end;
     return cacheItem;
 end;
@@ -94,9 +97,27 @@ local tradesCacheSize = 0;
 local function cacheTrade(trade)
     local trades = tradesCache[trade.order_num];
     if trades ~= nil then
-        -- Add new trade for existing trade's collection
-        trades[trade.trade_num] = trade;
+
+        -- For some reason Quik may call OnTrade() callback several times for same trade...
+        local tradeAlreadyExitst = false;
+        for k, v in pairs(trades) do
+            if v.trade_num == trade.trade_num then
+                tradeAlreadyExitst = true;
+                break;
+            end;
+        end;
+
+        if tradeAlreadyExitst == true then
+            logger.writeToLog(this, "TRADE: " .. trade.trade_num .. " ALREADY EXITST IN CACHE!");
+        else
+            logger.writeToLog(this, "CACHING TRADE: \n" .. jsonParser: encode_pretty(trade));
+            logger.writeToLog(this, "CACHE ALREADY CONTAINS TRADES FOR THIS ORDER: " .. trade.order_num .. " ADD NEW TRADE TO EXISTING COLLECTION!");
+            -- Add new trade for existing trade's collection
+            trades[trade.trade_num] = trade;
+        end;
     else
+        logger.writeToLog(this, "CACHING TRADE: \n" .. jsonParser: encode_pretty(trade));
+        logger.writeToLog(this, "THERE ARE NO TRADES FOR ORDER: " .. trade.order_num .. " IN CACHE. ADDING FIRST ONE!");
         -- Create new trades collection
         trades = {};
         trades[trade.trade_num] = trade;
@@ -108,15 +129,24 @@ end;
 
 local function findTrades(orderNum)
     local trades = tradesCache[orderNum];
+    local result = {};
+    local counter = 1;
     if trades ~= nil then
         for k, v in pairs(trades) do
+            v["type"] = "Trade";
+            v.datetime["type"] = "DateTime";
+            v.canceled_datetime["type"] = "DateTime";
+
+            result[counter] = v;
+            counter = counter + 1;
+
+            -- Reduces cache size
             tradesCacheSize = tradesCacheSize - 1;
         end;
         tradesCache[orderNum] = nil;
     end;
-    return trades;
+    return result;
 end;
-
 
 
 ---------------------------------------------------------------------------------------

@@ -88,9 +88,9 @@ end;
 local function getECHOResponse(request)
 
     local response = getCommonResponsePart(request);
-    local reuqestBody = request["body"];
+    local reuqestBody = request.body;
 
-    if reuqestBody["echoMessage"] ~= nil then
+    if reuqestBody.echoMessage ~= nil then
         response["status"] = "SUCCESS";
 
         local responseBody = {};
@@ -98,7 +98,7 @@ local function getECHOResponse(request)
 
         local echo = {};
         echo["type"] = "Echo";
-        echo["echoAnswer"] = "@ECHO: " .. reuqestBody["echoMessage"];
+        echo["echoAnswer"] = "@ECHO: " .. reuqestBody.echoMessage;
 
         responseBody["echo"] = echo;
         response["body"] = responseBody;
@@ -147,9 +147,9 @@ end;
 local function getInfoParameterResponse(request)
 
     local response = getCommonResponsePart(request);
-    local reuqestBody = request["body"];
+    local reuqestBody = request.body;
 
-    if reuqestBody["infoParameterName"] ~= nil then
+    if reuqestBody.infoParameterName ~= nil then
         response["status"] = "SUCCESS";
 
         local responseBody = {};
@@ -157,9 +157,9 @@ local function getInfoParameterResponse(request)
 
         local info = {};
         info["type"] = "InfoParameter";
-        info["parameterName"] = reuqestBody["infoParameterName"];
+        info["parameterName"] = reuqestBody.infoParameterName;
 
-        local value = getInfoParam(reuqestBody["infoParameterName"]);
+        local value = getInfoParam(reuqestBody.infoParameterName);
         if value == "" then
             info["parameterValue"] = "NA";
         else
@@ -186,21 +186,21 @@ end;
 local function getTransactionResponse(request)
 
     local response = getCommonResponsePart(request);
-    local reuqestBody = request["body"];
+    local reuqestBody = request.body;
 
-    local transaction = reuqestBody["transaction"];
+    local transaction = reuqestBody.transaction;
     if transaction ~= nil then
 
         local responseBody = {};
         responseBody["type"] = "TransactionResponseBody";
 
         local result = quikDataManager.sendTransaction(this, transaction);
-        if result["status"] ~= "FAILED" then
+        if result.status ~= "FAILED" then
             response["status"] = "SUCCESS";
-            responseBody["transactionReplay"] = result["transReplay"];
+            responseBody["transactionReplay"] = result.transReplay;
         else
             response["status"] = "FAILED";
-            response["error"] = result["error"];
+            response["error"] = result.error;
         end;
         response["body"] = responseBody;
     else
@@ -221,21 +221,19 @@ end;
 local function getOrderResponse(request)
 
     local response = getCommonResponsePart(request);
-    local reuqestBody = request["body"];
+    local reuqestBody = request.body;
 
-    if reuqestBody["orderNumber"] ~= nil then
-        response["status"] = "SUCCESS";
-
+    if reuqestBody.orderNumber ~= nil then
         local responseBody = {};
         responseBody["type"] = "OrderResponseBody";
 
-        local result = quikDataManager.getOrder(this, reuqestBody["orderNumber"], false);
-        if result["status"] ~= "FAILED" then
+        local result = quikDataManager.getOrder(this, reuqestBody.orderNumber, true);
+        if result.status ~= "FAILED" then
             response["status"] = "SUCCESS";
-            responseBody["order"] = result["order"];
+            responseBody["order"] = result.order;
         else
             response["status"] = "FAILED";
-            response["error"] = result["error"];
+            response["error"] = result.error;
         end;
         response["body"] = responseBody;
     else
@@ -250,12 +248,44 @@ end;
 
 
 ---------------------------------------------------------------------------------------
+-- Constructs response for get trades request.
+--
+---------------------------------------------------------------------------------------
+local function getTradesResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    if reuqestBody.orderNumber ~= nil then
+        local responseBody = {};
+        responseBody["type"] = "TradesResponseBody";
+
+        local result = quikDataManager.getTrades(this, reuqestBody.orderNumber);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["tradesDataFrame"] = result.tradesDataFrame;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+        response["body"] = responseBody;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS. ORDER NUMBER CANNOT BE NULL!";
+    end;
+
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
 ---------------------------------------------------------------------------------------
 local function processGET(request)
 
-    local subject = request["subject"];
+    local subject = request.subject;
     if subject == "ECHO" then
         return getECHOResponse(request);
     elseif subject == "CONNECTION_SATE" then
@@ -264,6 +294,8 @@ local function processGET(request)
         return getInfoParameterResponse(request);
     elseif subject == "ORDER" then
         return getOrderResponse(request);
+    elseif subject == "TRADE" then
+        return getTradesResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
@@ -277,7 +309,7 @@ end;
 --
 ---------------------------------------------------------------------------------------
 local function processPOST(request)
-    local subject = request["subject"];
+    local subject = request.subject;
     if subject == "TRANSACTION" then
         return getTransactionResponse(request);
     else
@@ -299,7 +331,7 @@ function RequestManager : processRequest(rawJSONRequest)
 
     if request ~= nill and validateRequest(request) then
 
-        local type = request["type"];
+        local type = request.type;
         if type == "GET" then
             response = processGET(request);
         elseif type == "POST" then

@@ -108,6 +108,10 @@ local function getTransactionResult(transaction)
     local result = {};
     local counter = 0;
     while replay == nil do
+        if counter % 100 == 0 then
+            logger.writeToLog(this, "CHECKING FOR EXISTANCE OF TRANSACTION REPLAY IN CACHE!");
+        end;
+
         replay = cacheManager.find(this, "TRANS_REPLAY", transId);
         if counter > TRANSACTION_REPLAY_RETRY_COUNT then
             result["status"] = "FAILED";
@@ -203,17 +207,32 @@ function QuikDataManager : getOrder(orderNumber, noWait)
     end
 
     result["status"] = "SUCCESS";
-    order["type"] = "Order";
-
-    local dateTime = order["datetime"];
-    dateTime["type"] = "DateTime";
-
-    local withdrawDatetime = order["withdraw_datetime"];
-    withdrawDatetime["type"] = "DateTime";
-
     result["order"] = order;
     return result;
 end;
+
+
+
+---------------------------------------------------------------------------------------
+-- Section with server-side functionality for trades processing.
+--
+---------------------------------------------------------------------------------------
+
+
+function QuikDataManager : getTrades(orderNumber)
+    local result = {};
+    result["status"] = "SUCCESS";
+
+    local trades = cacheManager.find(this, "TRADE", orderNumber);
+    local tradesDataFrame = {};
+    tradesDataFrame["type"] = "TradesDataFrame";
+    tradesDataFrame["records"] = trades;
+    result["tradesDataFrame"] = tradesDataFrame;
+    logger.writeToLog(this, "\nFINAL TRADES LIST: " .. jsonParser: encode_pretty(tradesDataFrame) .. "\n");
+    return result;
+end;
+
+
 
 
 -- End of CacheManager module
