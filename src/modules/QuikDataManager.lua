@@ -52,6 +52,30 @@ local TRANSACTION_FIELDS =
 }
 
 
+local TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP = {};
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["orders"] = "Order";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["trades"] = "Trade";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["firms"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["classes"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["securities"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["trade_accounts"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["client_codes"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["all_trades"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["account_positions"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["futures_client_holding"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["futures_client_limits "] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["money_limits"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["depo_limits"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["stop_orders"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["neg_deals"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["neg_trades"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["neg_deal_reports"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["firm_holding"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["account_balance"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["ccp_positions"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["ccp_holdings"] = "TODO";
+
+
 
 ---------------------------------------------------------------------------------------
 -- Setter for external dependencies
@@ -232,6 +256,65 @@ function QuikDataManager : getTrades(orderNumber)
     return result;
 end;
 
+
+
+
+---------------------------------------------------------------------------------------
+-- Section with server-side functionality for access to quik tables.
+--
+---------------------------------------------------------------------------------------
+
+
+local function isDateTime(object)
+    local isDate = true;
+    isDate = isDate and type(object) == "table";
+    isDate = isDate and object.day ~= nil;
+    isDate = isDate and object.hour ~= nil;
+    isDate = isDate and object.mcs ~= nil;
+    isDate = isDate and object.min ~= nil;
+    isDate = isDate and object.month ~= nil;
+    isDate = isDate and object.ms ~= nil;
+    isDate = isDate and object.sec ~= nil;
+    isDate = isDate and object.week_day ~= nil;
+    isDate = isDate and object.year ~= nil;
+    return isDate;
+end;
+
+
+function QuikDataManager : getTableItem(tableName, itemIndex)
+    logger.writeToLog(this, "\nTRYING TO GET ITEM WITH INDEX: " .. itemIndex ..  " OF QUIK TABLE: " .. tableName .. "\n");
+    local result = {};
+    local itemClass = TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP[tableName];
+    if itemClass ~= nil then
+
+        local rowsCount = getNumberOf(tableName);
+        if itemIndex > (rowsCount - 1) then
+            result["status"] = "FAILED";
+            result["error"] = "Index out of range! Currently, table: " .. tableName .. " contains only " .. rowsCount .. " rows.";
+        else
+            local item = getItem(tableName, itemIndex);
+            if item ~= nil then
+                item["type"] = itemClass;
+                for key, value in pairs(item) do
+                    if isDateTime(value) then
+                        value["type"] = "DateTime";
+                    end;
+                end;
+                result["status"] = "SUCCESS";
+                result["item"] = item;
+            else
+                result["status"] = "FAILED";
+                result["error"] = "CALL OF getItem( tableName = " .. tableName .. ", index = " .. itemIndex .. ") RETURNS NIL VALUE!";
+            end;
+        end;
+
+    else
+        result["status"] = "FAILED";
+        result["error"] = "UNKNOWN TABLE!";
+    end;
+    logger.writeToLog(this, "\nRESULT: " .. jsonParser: encode_pretty(result) .. "\n");
+    return result;
+end;
 
 
 

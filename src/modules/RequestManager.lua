@@ -281,7 +281,7 @@ end;
 
 
 ---------------------------------------------------------------------------------------
--- Constructs response for request of the info about terminal.
+-- Constructs response for request of the info about quik table.
 --
 ---------------------------------------------------------------------------------------
 local function getTableInfoResponse(request)
@@ -313,6 +313,39 @@ end;
 
 
 ---------------------------------------------------------------------------------------
+-- Constructs response for request for item of quik table.
+--
+---------------------------------------------------------------------------------------
+local function getTableItemResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "QuikTableItemResponseBody";
+    if reuqestBody.tableType ~= nil and reuqestBody.itemIndex ~= nil then
+
+        local result = quikDataManager.getTableItem(this, reuqestBody.tableType, reuqestBody.itemIndex);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["item"] = result.item;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+        response["body"] = responseBody;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS. INFO PARAMETER REQUEST MUST CONTAIN NOT NULL NAME OF THE PARAMETER!";
+    end;
+
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
 ---------------------------------------------------------------------------------------
@@ -331,6 +364,8 @@ local function processGET(request)
         return getTradesResponse(request);
     elseif subject == "TABLE_INFO" then
         return getTableInfoResponse(request);
+    elseif subject == "TABLE_ITEM" then
+        return getTableItemResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
