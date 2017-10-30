@@ -317,6 +317,39 @@ function QuikDataManager : getTableItem(tableName, itemIndex)
 end;
 
 
+function QuikDataManager : getTableItems(tableName)
+    logger.writeToLog(this, "\nTRYING TO GET ALL ITEMS OF QUIK TABLE: " .. tableName .. "\n");
+    local result = {};
+    local itemClass = TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP[tableName];
+    if itemClass ~= nil then
+
+        local dataFrame = {};
+        dataFrame["type"] = "QuikDataFrame";
+        dataFrame["records"] = {};
+
+        local item;
+        local rowsCount = getNumberOf(tableName);
+        for i = 0, (rowsCount - 1), 1 do
+            item = getItem(tableName, i);
+            item["type"] = itemClass;
+            for key, value in pairs(item) do
+                if isDateTime(value) then
+                    value["type"] = "DateTime";
+                end;
+            end;
+            dataFrame.records[i + 1] = item;
+        end;
+
+        result["tableItems"] = dataFrame;
+        result["status"] = "SUCCESS";
+    else
+        result["status"] = "FAILED";
+        result["error"] = "UNKNOWN TABLE!";
+    end;
+    logger.writeToLog(this, "\nRESULT: " .. jsonParser: encode_pretty(result) .. "\n");
+    return result;
+end;
+
 
 -- End of CacheManager module
 return QuikDataManager;

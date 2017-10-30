@@ -346,6 +346,39 @@ end;
 
 
 ---------------------------------------------------------------------------------------
+-- Constructs response for request for item of quik table.
+--
+---------------------------------------------------------------------------------------
+local function getTableItemsResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "QuikTableItemsResponseBody";
+    if reuqestBody.tableType ~= nil then
+
+        local result = quikDataManager.getTableItems(this, reuqestBody.tableType);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["items"] = result.tableItems;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+        response["body"] = responseBody;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS. INFO PARAMETER REQUEST MUST CONTAIN NOT NULL NAME OF THE PARAMETER!";
+    end;
+
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
 ---------------------------------------------------------------------------------------
@@ -366,6 +399,8 @@ local function processGET(request)
         return getTableInfoResponse(request);
     elseif subject == "TABLE_ITEM" then
         return getTableItemResponse(request);
+    elseif subject == "TABLE_ITEMS" then
+        return getTableItemsResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
