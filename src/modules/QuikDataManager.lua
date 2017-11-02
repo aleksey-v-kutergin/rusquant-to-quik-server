@@ -53,27 +53,27 @@ local TRANSACTION_FIELDS =
 
 
 local TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP = {};
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["firms"] = "Firm";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["classes"] = "SecurityClass";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["securities"] = "Security";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["trade_accounts"] = "TradingAccount";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["client_codes"] = "ClientCode";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["all_trades"] = "AnonymousTrade";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["account_positions"] = "AccountPosition";
 TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["orders"] = "Order";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["futures_client_holding"] = "FuturesClientHolding";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["futures_client_limits "] = "FuturesClientLimit";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["money_limits"] = "MoneyLimit";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["depo_limits"] = "DepoLimit";
 TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["trades"] = "Trade";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["firms"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["classes"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["securities"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["trade_accounts"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["client_codes"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["all_trades"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["account_positions"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["futures_client_holding"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["futures_client_limits "] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["money_limits"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["depo_limits"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["stop_orders"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["neg_deals"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["neg_trades"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["neg_deal_reports"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["firm_holding"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["account_balance"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["ccp_positions"] = "TODO";
-TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["ccp_holdings"] = "TODO";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["stop_orders"] = "StopOrder";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["neg_deals"] = "NegDeal";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["neg_trades"] = "NegTrade";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["neg_deal_reports"] = "NegDealReport";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["firm_holding"] = "FirmHolding";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["account_balance"] = "AccountBalance";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["ccp_positions"] = "CppPosition";
+TABLE_NAME_TO_JAVA_ITEM_CLASS_MAP["ccp_holdings"] = "CppHolding";
 
 
 
@@ -294,12 +294,21 @@ function QuikDataManager : getTableItem(tableName, itemIndex)
         else
             local item = getItem(tableName, itemIndex);
             if item ~= nil then
-                item["type"] = itemClass;
-                for key, value in pairs(item) do
-                    if isDateTime(value) then
-                        value["type"] = "DateTime";
+                if tableName == "client_codes" then
+                    -- In this case item is string, containing code of the client with index itemIndex
+                    local clientCode = item;
+                    item = {};
+                    item["code"] = clientCode;
+                    item["type"] = itemClass;
+                else
+                    item["type"] = itemClass;
+                    for key, value in pairs(item) do
+                        if isDateTime(value) then
+                            value["type"] = "DateTime";
+                        end;
                     end;
                 end;
+
                 result["status"] = "SUCCESS";
                 result["item"] = item;
             else
@@ -331,10 +340,18 @@ function QuikDataManager : getTableItems(tableName)
         local rowsCount = getNumberOf(tableName);
         for i = 0, (rowsCount - 1), 1 do
             item = getItem(tableName, i);
-            item["type"] = itemClass;
-            for key, value in pairs(item) do
-                if isDateTime(value) then
-                    value["type"] = "DateTime";
+            if tableName == "client_codes" then
+                -- In this case item is string, containing code of the client with index itemIndex
+                local clientCode = item;
+                item = {};
+                item["code"] = clientCode;
+                item["type"] = itemClass;
+            else
+                item["type"] = itemClass;
+                for key, value in pairs(item) do
+                    if isDateTime(value) then
+                        value["type"] = "DateTime";
+                    end;
                 end;
             end;
             dataFrame.records[i + 1] = item;
