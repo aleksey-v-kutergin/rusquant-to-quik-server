@@ -301,12 +301,14 @@ function QuikDataManager : getTableItem(tableName, itemIndex)
                     item["code"] = clientCode;
                     item["type"] = itemClass;
                 else
-                    item["type"] = itemClass;
                     for key, value in pairs(item) do
                         if isDateTime(value) then
                             value["type"] = "DateTime";
+                        elseif type(value) == "string" then
+                            item[key] = value:gsub('"','');
                         end;
                     end;
+                    item["type"] = itemClass;
                 end;
 
                 result["status"] = "SUCCESS";
@@ -336,10 +338,9 @@ function QuikDataManager : getTableItems(tableName)
         dataFrame["type"] = "QuikDataFrame";
         dataFrame["records"] = {};
 
-        local item;
         local rowsCount = getNumberOf(tableName);
         for i = 0, (rowsCount - 1), 1 do
-            item = getItem(tableName, i);
+            local item = getItem(tableName, i);
             if tableName == "client_codes" then
                 -- In this case item is string, containing code of the client with index itemIndex
                 local clientCode = item;
@@ -347,13 +348,16 @@ function QuikDataManager : getTableItems(tableName)
                 item["code"] = clientCode;
                 item["type"] = itemClass;
             else
-                item["type"] = itemClass;
                 for key, value in pairs(item) do
                     if isDateTime(value) then
                         value["type"] = "DateTime";
+                    elseif type(value) == "string" then
+                        item[key] = value:gsub('"','');
                     end;
                 end;
+                item["type"] = itemClass;
             end;
+            logger.writeToLog(this, "\nITEM: " .. jsonParser: encode_pretty(item) .. "\n");
             dataFrame.records[i + 1] = item;
         end;
 

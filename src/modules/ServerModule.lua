@@ -77,10 +77,10 @@ local PIPE_REJECT_REMOTE_CLIENTS = 0x00000008;
 local MAX_NUM_OF_INSTANCES = 1;
 
 -- The number of bytes to reserve for output buffer
-local OUT_BUFFER_SIZE = 4 * 1024;
+local OUT_BUFFER_SIZE = 512 * 1024;
 
 -- The number of bytes to reserve for input buffer
-local IN_BUFFER_SIZE = 4 * 1024;
+local IN_BUFFER_SIZE = 512 * 1024;
 
 -- The default time-out in milliseconds. Zero means time-out in 50 ms.
 local DEFAULT_TIME_OUT = 0;
