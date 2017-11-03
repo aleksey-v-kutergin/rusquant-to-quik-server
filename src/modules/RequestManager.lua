@@ -395,7 +395,10 @@ local function getTradingParameterResponse(request)
     isValid = isValid and reuqestBody.parameter ~= nil;
 
     if isValid == true then
-        local result = quikDataManager.getTradingParameter(this, reuqestBody.classCode, reuqestBody.securityCode, reuqestBody.parameter);
+        local result = quikDataManager.getTradingParameter(this, reuqestBody.classCode,
+                                                                 reuqestBody.securityCode,
+                                                                 reuqestBody.parameter,
+                                                                 reuqestBody.version);
         if result.status ~= "FAILED" then
             response["status"] = "SUCCESS";
             responseBody["tradingParameter"] = result.tradingParameter;

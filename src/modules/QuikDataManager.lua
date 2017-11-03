@@ -264,9 +264,21 @@ end;
 ---------------------------------------------------------------------------------------
 
 
-function QuikDataManager : getTradingParameter(classCode, securityCode, parameterName)
+function QuikDataManager : getTradingParameter(classCode, securityCode, parameterName, version)
     local result = {};
-    local parameter = getParamEx(classCode,  securityCode, parameterName);
+
+    local parameter;
+    local functionName;
+    if version == "EX1" then
+        functionName = "getParamEx";
+        parameter = getParamEx(classCode,  securityCode, parameterName);
+    elseif version == "EX2" then
+        functionName = "getParamEx2";
+        parameter = getParamEx2(classCode,  securityCode, parameterName);
+    else
+        result["status"] = "FAILED";
+        result["error"] = "INVALID VERSION OF THE getParamEx() FUNCTION: " .. version .. "!";
+    end;
 
     if parameter ~= nil then
         if parameter.result == "1" then
@@ -275,14 +287,16 @@ function QuikDataManager : getTradingParameter(classCode, securityCode, paramete
             result["tradingParameter"] = parameter;
         else
             result["status"] = "FAILED";
-            result["error"] = "CALL OF getParamEx( classCode = " .. classCode ..
+            result["error"] = "CALL OF " .. functionName ..
+                                                "( classCode = " .. classCode ..
                                                 ", securityCode = " .. securityCode ..
                                                 ", parameterName = " .. parameterName ..
                                                 ") ENDS WITH ERROR (RESULT = 0)!";
         end;
     else
         result["status"] = "FAILED";
-        result["error"] = "CALL OF getParamEx( classCode = " .. classCode ..
+        result["error"] = "CALL OF " .. functionName ..
+                                            "( classCode = " .. classCode ..
                                             ", securityCode = " .. securityCode ..
                                             ", parameterName = " .. parameterName ..
                                             ") RETURNS NIL VALUE!";
