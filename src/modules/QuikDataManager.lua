@@ -258,6 +258,39 @@ end;
 
 
 
+---------------------------------------------------------------------------------------
+-- Section with server-side functionality for access to parameters of current trading table.
+--
+---------------------------------------------------------------------------------------
+
+
+function QuikDataManager : getTradingParameter(classCode, securityCode, parameterName)
+    local result = {};
+    local parameter = getParamEx(classCode,  securityCode, parameterName);
+
+    if parameter ~= nil then
+        if parameter.result == "1" then
+            result["status"] = "SUCCESS";
+            parameter["type"] = "TradingParameter";
+            result["tradingParameter"] = parameter;
+        else
+            result["status"] = "FAILED";
+            result["error"] = "CALL OF getParamEx( classCode = " .. classCode ..
+                                                ", securityCode = " .. securityCode ..
+                                                ", parameterName = " .. parameterName ..
+                                                ") ENDS WITH ERROR (RESULT = 0)!";
+        end;
+    else
+        result["status"] = "FAILED";
+        result["error"] = "CALL OF getParamEx( classCode = " .. classCode ..
+                                            ", securityCode = " .. securityCode ..
+                                            ", parameterName = " .. parameterName ..
+                                            ") RETURNS NIL VALUE!";
+    end;
+
+    return result;
+end;
+
 
 ---------------------------------------------------------------------------------------
 -- Section with server-side functionality for access to quik tables.

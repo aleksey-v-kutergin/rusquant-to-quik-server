@@ -379,6 +379,44 @@ end;
 
 
 ---------------------------------------------------------------------------------------
+-- Constructs response for request for parameter of current trading table.
+--
+---------------------------------------------------------------------------------------
+local function getTradingParameterResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "TradingParameterResponseBody";
+
+    local isValid = reuqestBody.classCode ~= nil;
+    isValid = isValid and reuqestBody.securityCode ~= nil;
+    isValid = isValid and reuqestBody.parameter ~= nil;
+
+    if isValid == true then
+        local result = quikDataManager.getTradingParameter(this, reuqestBody.classCode, reuqestBody.securityCode, reuqestBody.parameter);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["tradingParameter"] = result.tradingParameter;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+        response["body"] = responseBody;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS!";
+    end;
+
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+
+---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
 ---------------------------------------------------------------------------------------
@@ -401,6 +439,8 @@ local function processGET(request)
         return getTableItemResponse(request);
     elseif subject == "TABLE_ITEMS" then
         return getTableItemsResponse(request);
+    elseif subject == "TRADING_PARAMETER" then
+        return getTradingParameterResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
