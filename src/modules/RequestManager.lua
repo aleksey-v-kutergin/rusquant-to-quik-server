@@ -418,6 +418,32 @@ local function getTradingParameterResponse(request)
 end;
 
 
+---------------------------------------------------------------------------------------
+-- Constructs response for tarde date request.
+--
+---------------------------------------------------------------------------------------
+local function getTradeDateResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local responseBody = {};
+    responseBody["type"] = "TradeDateResponseBody";
+
+    local tradeDate = getTradeDate();
+    if tradeDate ~= nil then
+        response["status"] = "SUCCESS";
+        tradeDate["type"] = "TradeDate";
+        responseBody["tradeDate"] = tradeDate;
+        response["body"] = responseBody;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "CALL OF getTradeDate() RETURN NIL VALUE!";
+    end;
+
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
 
 ---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
@@ -444,6 +470,8 @@ local function processGET(request)
         return getTableItemsResponse(request);
     elseif subject == "TRADING_PARAMETER" then
         return getTradingParameterResponse(request);
+    elseif subject == "TRADE_DATE" then
+        return getTradeDateResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
