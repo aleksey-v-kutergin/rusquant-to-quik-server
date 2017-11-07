@@ -90,23 +90,22 @@ local function getECHOResponse(request)
     local response = getCommonResponsePart(request);
     local reuqestBody = request.body;
 
+    local responseBody = {};
+    responseBody["type"] = "EchoResponseBody";
+
     if reuqestBody.echoMessage ~= nil then
         response["status"] = "SUCCESS";
-
-        local responseBody = {};
-        responseBody["type"] = "EchoResponseBody";
 
         local echo = {};
         echo["type"] = "Echo";
         echo["echoAnswer"] = "@ECHO: " .. reuqestBody.echoMessage;
-
         responseBody["echo"] = echo;
-        response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS. ECHO REQUEST MUST CONTAIN NOT NULL echoMessage PARAMETER!";
     end;
 
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -129,10 +128,9 @@ local function getConnectionStateResponse(request)
     local connectionState = {};
     connectionState["type"] = "ConnectionState";
     connectionState["isConnected"] = isConnected();
-
     responseBody["connectionState"] = connectionState;
-    response["body"] = responseBody;
 
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -149,11 +147,11 @@ local function getInfoParameterResponse(request)
     local response = getCommonResponsePart(request);
     local reuqestBody = request.body;
 
+    local responseBody = {};
+    responseBody["type"] = "InfoParameterResponseBody";
+
     if reuqestBody.infoParameterName ~= nil then
         response["status"] = "SUCCESS";
-
-        local responseBody = {};
-        responseBody["type"] = "InfoParameterResponseBody";
 
         local info = {};
         info["type"] = "InfoParameter";
@@ -165,14 +163,13 @@ local function getInfoParameterResponse(request)
         else
             info["parameterValue"] = value;
         end;
-
         responseBody["infoParameter"] = info;
-        response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS. INFO PARAMETER REQUEST MUST CONTAIN NOT NULL NAME OF THE PARAMETER!";
     end;
 
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -188,11 +185,11 @@ local function getTransactionResponse(request)
     local response = getCommonResponsePart(request);
     local reuqestBody = request.body;
 
+    local responseBody = {};
+    responseBody["type"] = "TransactionResponseBody";
+
     local transaction = reuqestBody.transaction;
     if transaction ~= nil then
-
-        local responseBody = {};
-        responseBody["type"] = "TransactionResponseBody";
 
         local result = quikDataManager.sendTransaction(this, transaction);
         if result.status ~= "FAILED" then
@@ -202,12 +199,12 @@ local function getTransactionResponse(request)
             response["status"] = "FAILED";
             response["error"] = result.error;
         end;
-        response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS. TRANSACTION CANNOT BE NULL!";
     end;
 
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -223,10 +220,10 @@ local function getOrderResponse(request)
     local response = getCommonResponsePart(request);
     local reuqestBody = request.body;
 
-    if reuqestBody.orderNumber ~= nil then
-        local responseBody = {};
-        responseBody["type"] = "OrderResponseBody";
+    local responseBody = {};
+    responseBody["type"] = "OrderResponseBody";
 
+    if reuqestBody.orderNumber ~= nil then
         local result = quikDataManager.getOrder(this, reuqestBody.orderNumber, true);
         if result.status ~= "FAILED" then
             response["status"] = "SUCCESS";
@@ -235,12 +232,12 @@ local function getOrderResponse(request)
             response["status"] = "FAILED";
             response["error"] = result.error;
         end;
-        response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS. ORDER NUMBER CANNOT BE NULL!";
     end;
 
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -256,10 +253,10 @@ local function getTradesResponse(request)
     local response = getCommonResponsePart(request);
     local reuqestBody = request.body;
 
-    if reuqestBody.orderNumber ~= nil then
-        local responseBody = {};
-        responseBody["type"] = "TradesResponseBody";
+    local responseBody = {};
+    responseBody["type"] = "TradesResponseBody";
 
+    if reuqestBody.orderNumber ~= nil then
         local result = quikDataManager.getTrades(this, reuqestBody.orderNumber);
         if result.status ~= "FAILED" then
             response["status"] = "SUCCESS";
@@ -268,12 +265,13 @@ local function getTradesResponse(request)
             response["status"] = "FAILED";
             response["error"] = result.error;
         end;
-        response["body"] = responseBody;
+
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS. ORDER NUMBER CANNOT BE NULL!";
     end;
 
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -289,10 +287,11 @@ local function getTableInfoResponse(request)
     local response = getCommonResponsePart(request);
     local reuqestBody = request.body;
 
+    local responseBody = {};
+    responseBody["type"] = "QuikTableInfoResponseBody";
+
     if reuqestBody.tableType ~= nil then
         response["status"] = "SUCCESS";
-        local responseBody = {};
-        responseBody["type"] = "QuikTableInfoResponseBody";
 
         local tableInfo = {};
         tableInfo["type"] = "QuikTableInfo";
@@ -300,12 +299,12 @@ local function getTableInfoResponse(request)
         tableInfo["rowsCount"] =  getNumberOf(reuqestBody.tableType);
 
         responseBody["tableInfo"] = tableInfo;
-        response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS. INFO PARAMETER REQUEST MUST CONTAIN NOT NULL NAME OF THE PARAMETER!";
     end;
 
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -324,7 +323,6 @@ local function getTableItemResponse(request)
     local responseBody = {};
     responseBody["type"] = "QuikTableItemResponseBody";
     if reuqestBody.tableType ~= nil and reuqestBody.itemIndex ~= nil then
-
         local result = quikDataManager.getTableItem(this, reuqestBody.tableType, reuqestBody.itemIndex);
         if result.status ~= "FAILED" then
             response["status"] = "SUCCESS";
@@ -333,12 +331,12 @@ local function getTableItemResponse(request)
             response["status"] = "FAILED";
             response["error"] = result.error;
         end;
-        response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS. INFO PARAMETER REQUEST MUST CONTAIN NOT NULL NAME OF THE PARAMETER!";
     end;
 
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -356,8 +354,8 @@ local function getTableItemsResponse(request)
 
     local responseBody = {};
     responseBody["type"] = "QuikTableItemsResponseBody";
-    if reuqestBody.tableType ~= nil then
 
+    if reuqestBody.tableType ~= nil then
         local result = quikDataManager.getTableItems(this, reuqestBody.tableType);
         if result.status ~= "FAILED" then
             response["status"] = "SUCCESS";
@@ -366,12 +364,12 @@ local function getTableItemsResponse(request)
             response["status"] = "FAILED";
             response["error"] = result.error;
         end;
-        response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS. INFO PARAMETER REQUEST MUST CONTAIN NOT NULL NAME OF THE PARAMETER!";
     end;
 
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -406,12 +404,12 @@ local function getTradingParameterResponse(request)
             response["status"] = "FAILED";
             response["error"] = result.error;
         end;
-        response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS!";
     end;
 
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -433,12 +431,12 @@ local function getTradeDateResponse(request)
         response["status"] = "SUCCESS";
         tradeDate["type"] = "TradeDate";
         responseBody["tradeDate"] = tradeDate;
-        response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "CALL OF getTradeDate() RETURN NIL VALUE!";
     end;
 
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -469,12 +467,60 @@ local function getSecurityInfoResponse(request)
             response["status"] = "FAILED";
             response["error"] = result.error;
         end;
-        response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS!";
     end;
 
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+---------------------------------------------------------------------------------------
+-- Constructs response for max count of lots in order request.
+--
+---------------------------------------------------------------------------------------
+local function getMaxLotCountResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "MaxCountOfLotsResponseBody";
+
+    local isValid = reuqestBody.classCode ~= nil;
+    isValid = isValid and reuqestBody.securityCode ~= nil;
+    isValid = isValid and reuqestBody.clientCode ~= nil;
+    isValid = isValid and reuqestBody.account ~= nil;
+    isValid = isValid and reuqestBody.price ~= nil;
+    isValid = isValid and reuqestBody.isBuy ~= nil;
+    isValid = isValid and reuqestBody.isMarket ~= nil;
+
+    if isValid == true then
+        local result = quikDataManager.getMaxCountOfLotsInOrder(this,
+                                                                reuqestBody.classCode,
+                                                                reuqestBody.securityCode,
+                                                                reuqestBody.clientCode,
+                                                                reuqestBody.account,
+                                                                reuqestBody.price,
+                                                                reuqestBody.isBuy,
+                                                                reuqestBody.isMarket);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["countOfLots"] = result.countOfLots;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS!";
+    end;
+
+    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -509,6 +555,8 @@ local function processGET(request)
         return getTradeDateResponse(request);
     elseif subject == "SECURITY_INFO" then
         return getSecurityInfoResponse(request);
+    elseif subject == "MAX_LOT_COUNT" then
+        return getMaxLotCountResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
@@ -537,7 +585,6 @@ end;
 --
 ---------------------------------------------------------------------------------------
 function RequestManager : processRequest(rawJSONRequest)
-
     local request = jsonParser: decode(rawJSONRequest);
     local response;
     local rawJSONResponse;

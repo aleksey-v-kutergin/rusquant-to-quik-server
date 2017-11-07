@@ -445,5 +445,41 @@ function QuikDataManager : getSecurityInfo(classCode, securityCode)
 end;
 
 
+
+function QuikDataManager : getMaxCountOfLotsInOrder(classCode, securityCode, clientCode, account, price, isBuy, isMarket)
+    local result = {};
+    local qty, comission = CalcBuySell(classCode, securityCode, clientCode, account, price, isBuy, isMarket);
+    if qty == nil or comission == nil then
+        result["status"] = "FAILED";
+        local error = "CALL OF " .. "CalcBuySell" ..
+                "( classCode = " .. classCode ..
+                ", securityCode = " .. securityCode ..
+                ", securityCode = " .. clientCode ..
+                ", securityCode = " .. account ..
+                ", securityCode = " .. price ..
+                ", securityCode = " .. isBuy ..
+                ", securityCode = " .. isMarket ..
+                ") RETURNS NIL VALUE FOR: ";
+        if qty == nil and comission == nil then
+            error  = error .. "qty, comission";
+        elseif qty == nil then
+            error  = error .. "qty";
+        else
+            error  = error .. "comission";
+        end;
+        result["error"] = error .. "!"
+    else
+        local countOfLots = {};
+        countOfLots["qty"] = qty;
+        countOfLots["comission"] = comission;
+        countOfLots["type"] = "CountOfLots";
+
+        result["countOfLots"] = countOfLots;
+        result["status"] = "SUCCESS";
+    end;
+    return result;
+end;
+
+
 -- End of CacheManager module
 return QuikDataManager;
