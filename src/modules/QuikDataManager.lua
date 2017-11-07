@@ -419,5 +419,31 @@ function QuikDataManager : getTableItems(tableName)
 end;
 
 
+function QuikDataManager : getSecurityInfo(classCode, securityCode)
+    local result = {};
+    local security = getSecurityInfo(classCode, securityCode);
+    if security ~= nil then
+        for key, value in pairs(security) do
+            if isDateTime(value) then
+                value["type"] = "DateTime";
+            elseif type(value) == "string" then
+                security[key] = value:gsub('"','');
+            end;
+        end;
+        security["type"] = "Security";
+
+        result["security"] = security;
+        result["status"] = "SUCCESS";
+    else
+        result["status"] = "FAILED";
+        result["error"] = "CALL OF " .. "getSecurityInfo" ..
+                "( classCode = " .. classCode ..
+                ", securityCode = " .. securityCode ..
+                ") RETURNS NIL VALUE! INVALID CLASS CODE OR SECURITY CODE!";
+    end;
+    return result;
+end;
+
+
 -- End of CacheManager module
 return QuikDataManager;
