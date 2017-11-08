@@ -489,6 +489,27 @@ function QuikDataManager : getClassesList()
 end;
 
 
+function QuikDataManager : getClassSecuritiesList(classCode)
+    local result = {};
+    -- Reurns empty string if such class does not exists
+    local codesString = getClassSecurities(classCode);
+    if codesString ~= nil then
+        local codes = {};
+        codes["type"] = "CodesArray";
+        codes["separator"] = ",";
+        codes["codesString"] = codesString;
+
+        result["codes"] = codes;
+        result["status"] = "SUCCESS";
+    else
+        result["status"] = "FAILED";
+        result["error"] = "CALL OF " .. "getClassSecurities" ..
+                "( classCode = " .. classCode ..
+                ") RETURNS NIL VALUE! INVALID CLASS CODE!";
+    end;
+    return result;
+end;
+
 
 function QuikDataManager : getMaxCountOfLotsInOrder(classCode, securityCode, clientCode, account, price, isBuy, isMarket)
     local result = {};

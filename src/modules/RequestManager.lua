@@ -532,6 +532,36 @@ local function getClassesListResponse(request)
 end;
 
 
+
+local function getClassSecuritiesResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "ClassSecuritiesResponseBody";
+
+    if reuqestBody.classCode ~= nil then
+        local result = quikDataManager.getClassSecuritiesList(this, reuqestBody.classCode);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["codes"] = result.codes;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
 ---------------------------------------------------------------------------------------
 -- Constructs response for max count of lots in order request.
 --
@@ -614,6 +644,8 @@ local function processGET(request)
         return getClassInfoResponse(request);
     elseif subject == "CLASSES_LIST" then
         return getClassesListResponse(request);
+    elseif subject == "CLASS_SECURITIES" then
+        return getClassSecuritiesResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
