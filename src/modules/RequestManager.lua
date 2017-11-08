@@ -509,6 +509,29 @@ local function getClassInfoResponse(request)
 end;
 
 
+local function getClassesListResponse(request)
+
+    local response = getCommonResponsePart(request);
+
+    local responseBody = {};
+    responseBody["type"] = "ClassesListResponseBody";
+
+    local result = quikDataManager.getClassesList();
+    if result.status ~= "FAILED" then
+        response["status"] = "SUCCESS";
+        responseBody["codes"] = result.codes;
+    else
+        response["status"] = "FAILED";
+        response["error"] = result.error;
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
 ---------------------------------------------------------------------------------------
 -- Constructs response for max count of lots in order request.
 --
@@ -589,6 +612,8 @@ local function processGET(request)
         return getMaxLotCountResponse(request);
     elseif subject == "CLASS_INFO" then
         return getClassInfoResponse(request);
+    elseif subject == "CLASSES_LIST" then
+        return getClassesListResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
