@@ -446,6 +446,29 @@ end;
 
 
 
+function QuikDataManager : getClassInfo(classCode)
+    local result = {};
+    local securityClass = getClassInfo(classCode);
+    if securityClass ~= nil then
+        for key, value in pairs(securityClass) do
+            if type(value) == "string" then
+                securityClass[key] = value:gsub('"','');
+            end;
+        end;
+        securityClass["type"] = "SecurityClass";
+
+        result["securityClass"] = securityClass;
+        result["status"] = "SUCCESS";
+    else
+        result["status"] = "FAILED";
+        result["error"] = "CALL OF " .. "getClassInfo" ..
+                "( classCode = " .. classCode ..
+                ") RETURNS NIL VALUE! INVALID CLASS CODE!";
+    end;
+    return result;
+end;
+
+
 function QuikDataManager : getMaxCountOfLotsInOrder(classCode, securityCode, clientCode, account, price, isBuy, isMarket)
     local result = {};
     local qty, comission = CalcBuySell(classCode, securityCode, clientCode, account, price, isBuy, isMarket);

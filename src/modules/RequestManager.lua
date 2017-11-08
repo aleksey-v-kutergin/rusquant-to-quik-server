@@ -479,6 +479,36 @@ local function getSecurityInfoResponse(request)
 end;
 
 
+
+local function getClassInfoResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "SecurityClassInfoResponseBody";
+
+    if reuqestBody.classCode ~= nil then
+        local result = quikDataManager.getClassInfo(this, reuqestBody.classCode);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["securityClass"] = result.securityClass;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
 ---------------------------------------------------------------------------------------
 -- Constructs response for max count of lots in order request.
 --
@@ -557,6 +587,8 @@ local function processGET(request)
         return getSecurityInfoResponse(request);
     elseif subject == "MAX_LOT_COUNT" then
         return getMaxLotCountResponse(request);
+    elseif subject == "CLASS_INFO" then
+        return getClassInfoResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
