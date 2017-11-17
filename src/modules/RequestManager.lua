@@ -380,6 +380,73 @@ end;
 -- Constructs response for request for parameter of current trading table.
 --
 ---------------------------------------------------------------------------------------
+
+local function getSubcribeParameterResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "SubscribeParameterResponseBody";
+    local isValid = reuqestBody.id ~= nil;
+    isValid = isValid and reuqestBody.classCode ~= nil;
+    isValid = isValid and reuqestBody.securityCode ~= nil;
+    isValid = isValid and reuqestBody.parameterName ~= nil;
+
+    if isValid == true then
+        local result = quikDataManager.subscribeParameter(this,  reuqestBody.id,
+                                                                 reuqestBody.classCode,
+                                                                 reuqestBody.securityCode,
+                                                                 reuqestBody.parameterName);
+
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["descriptor"] = result.descriptor;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+local function getUnsubcribeParameterResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "UnsubscribeParameterResponseBody";
+
+    if reuqestBody.descriptor ~= nil then
+        local result = quikDataManager.unsubscribeParameter(this,  reuqestBody.descriptor);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["result"] = result.booleanResult;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS! DESCRIPTOR FOR PARAMETER IS NIL!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
 local function getTradingParameterResponse(request)
 
     local response = getCommonResponsePart(request);
@@ -404,12 +471,12 @@ local function getTradingParameterResponse(request)
             response["status"] = "FAILED";
             response["error"] = result.error;
         end;
+        response["body"] = responseBody;
     else
         response["status"] = "FAILED";
         response["error"] = "INVALID REQUEST PARAMETERS!";
     end;
 
-    response["body"] = responseBody;
     response["sendingTimeOfResponseAtServer"] = os.time();
     return response;
 
@@ -662,6 +729,10 @@ local function processPOST(request)
     local subject = request.subject;
     if subject == "TRANSACTION" then
         return getTransactionResponse(request);
+    elseif subject == "SUBSCRIBE_TRADING_PARAMETER" then
+        return getSubcribeParameterResponse(request);
+    elseif subject == "UNSUBSCRIBE_TRADING_PARAMETER" then
+        return getUnsubcribeParameterResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;

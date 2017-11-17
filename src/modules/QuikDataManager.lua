@@ -127,7 +127,7 @@ end;
 
 local function getTransactionResult(transaction)
     local transId = transaction["TRANS_ID"];
-    local replay = cacheManager.find(this, "TRANS_REPLAY", transId)
+    local replay = cacheManager.get(this, "TRANS_REPLAY", transId)
 
     local result = {};
     local counter = 0;
@@ -136,7 +136,7 @@ local function getTransactionResult(transaction)
             logger.writeToLog(this, "CHECKING FOR EXISTANCE OF TRANSACTION REPLAY IN CACHE!");
         end;
 
-        replay = cacheManager.find(this, "TRANS_REPLAY", transId);
+        replay = cacheManager.get(this, "TRANS_REPLAY", transId);
         if counter > TRANSACTION_REPLAY_RETRY_COUNT then
             result["status"] = "FAILED";
             result["error"] = "EXCEEDING RETRY COUNT FOR WAITING OF OCCURANCE OF THE TRANSACTION REPLAY IN CACHE! TRANSACTION REPLAY HAS NOT OCCURED YET!";
@@ -153,6 +153,7 @@ end;
 
 
 function QuikDataManager : sendTransaction(transaction)
+    -- Remove class information from object
     transaction["type"] = nil;
     local args = prepareTransactionArgs(transaction);
     logger.writeToLog(this, "\nCALL SEND TRANSACTION WITH ARGS: " .. jsonParser: encode_pretty(args) .. "\n");
@@ -204,7 +205,7 @@ end;
 local ORDER_REPLAY_RETRY_COUNT = 10000000;
 
 function QuikDataManager : getOrder(orderNumber, noWait)
-    local order = cacheManager.find(this, "ORDER", orderNumber)
+    local order = cacheManager.get(this, "ORDER", orderNumber)
     local result = {};
 
     if noWait == true then
@@ -221,7 +222,7 @@ function QuikDataManager : getOrder(orderNumber, noWait)
 
     local counter = 0;
     while order == nil do
-        order = cacheManager.find(this, "ORDER", orderNumber);
+        order = cacheManager.get(this, "ORDER", orderNumber);
         if counter > ORDER_REPLAY_RETRY_COUNT then
             result["status"] = "FAILED";
             result["error"] = "EXCEEDING RETRY COUNT FOR WAITING OF OCCURANCE OF THE ORDER IN CACHE! ORDER HAS NOT OCCURED YET!";
@@ -247,7 +248,7 @@ function QuikDataManager : getTrades(orderNumber)
     local result = {};
     result["status"] = "SUCCESS";
 
-    local trades = cacheManager.find(this, "TRADE", orderNumber);
+    local trades = cacheManager.get(this, "TRADE", orderNumber);
     local tradesDataFrame = {};
     tradesDataFrame["type"] = "TradesDataFrame";
     tradesDataFrame["records"] = trades;
@@ -262,6 +263,86 @@ end;
 -- Section with server-side functionality for access to parameters of current trading table.
 --
 ---------------------------------------------------------------------------------------
+
+function QuikDataManager : subscribeParameter(id, classCode, securityCode, parameterName)
+    local result = {};
+
+    local exitsInCache = cacheManager.contains(this, "PARAMETER_DESCRIPTOR", id);
+    if exitsInCache == false then
+        local subscribeResult = ParamRequest(classCode, securityCode, parameterName);
+        if subscribeResult == true then
+            local descriptor = {};
+            descriptor["type"] = "ParameterDescriptor";
+            descriptor["id"] = id;
+            descriptor["classCode"] = classCode;
+            descriptor["securityCode"] = securityCode;
+            descriptor["parameterName"] = parameterName;
+            cacheManager.cache(this, "PARAMETER_DESCRIPTOR", descriptor)
+
+            result["status"] = "SUCCESS";
+            result["descriptor"] = descriptor;
+        else
+            result["status"] = "FAILED";
+            result["error"] = "CALL OF " .. "ParamRequest" ..
+                    "( classCode = " .. classCode ..
+                    ", securityCode = " .. securityCode ..
+                    ", parameterName = " .. parameterName ..
+                    ") RETURNS FALSE!";
+        end;
+    else
+        result["status"] = "FAILED";
+        result["error"] = "SUBSCRIPTION TO PARAMETER: " ..
+                "{ id = " .. id ..
+                ", classCode = " .. classCode ..
+                ", securityCode = " .. securityCode ..
+                ", parameterName = " .. parameterName ..
+                "} ALREADY EXISTS IN CACHE!";
+    end;
+
+    return result;
+end;
+
+
+function QuikDataManager : unsubscribeParameter(descriptor)
+    local result = {};
+
+    local id = descriptor.id;
+    local classCode = descriptor.classCode;
+    local securityCode = descriptor.securityCode;
+    local parameterName = descriptor.parameterName;
+
+    local exitsInCache = cacheManager.contains(this, "PARAMETER_DESCRIPTOR", id);
+    if exitsInCache == true then
+        local cancelationResult = CancelParamRequest(classCode, securityCode, parameterName);
+        if cancelationResult == true then
+            local booleanResult = {};
+            booleanResult["type"] = "BooleanResult";
+            booleanResult["value"] = true;
+
+            cacheManager.get(this, "PARAMETER_DESCRIPTOR", id);
+            result["status"] = "SUCCESS";
+            result["booleanResult"] = booleanResult;
+        else
+            result["status"] = "FAILED";
+            result["error"] = "CALL OF " .. "CancelParamRequest" ..
+                    "( classCode = " .. classCode ..
+                    ", securityCode = " .. securityCode ..
+                    ", parameterName = " .. parameterName ..
+                    ") RETURNS FALSE!";
+        end;
+    else
+        result["status"] = "FAILED";
+        result["error"] = "SUBSCRIPTION TO PARAMETER: " ..
+                "{ id = " .. id ..
+                ", classCode = " .. classCode ..
+                ", securityCode = " .. securityCode ..
+                ", parameterName = " .. parameterName ..
+                "} DOES EXISTS IN CACHE! SUBSCRIBE TO PARAMETER FIRST!";
+    end;
+
+    return result;
+end;
+
 
 
 function QuikDataManager : getTradingParameter(classCode, securityCode, parameterName, version)

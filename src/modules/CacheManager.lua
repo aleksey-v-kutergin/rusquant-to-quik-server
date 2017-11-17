@@ -20,6 +20,7 @@ local CacheManager = {};
 local TRANS_REPLAY = "TRANS_REPLAY";
 local ORDER = "ORDER";
 local TRADE = "TRADE";
+local PARAMETER_DESCRIPTOR = "PARAMETER_DESCRIPTOR";
 local logger;
 local jsonParser;
 
@@ -39,7 +40,7 @@ local function cacheTransactionReplay(transReplay)
 end;
 
 
-local function findTransactionReplay(transId)
+local function getTransactionReplay(transId)
     local cacheItem = trasactionsReplayCache[transId];
     if cacheItem ~= nil then
         trasactionsReplayCache[transId] = nil;
@@ -67,7 +68,7 @@ local function cacheOrder(order)
 end;
 
 
-local function findOrder(orderNum)
+local function getOrder(orderNum)
     logger.writeToLog(this, "CHECKING FOR EXISTANCE OF THE ORDER IN CACHE!");
     local cacheItem = ordersCache[orderNum];
     if cacheItem ~= nil then
@@ -127,7 +128,7 @@ local function cacheTrade(trade)
 end;
 
 
-local function findTrades(orderNum)
+local function getTrades(orderNum)
     local trades = tradesCache[orderNum];
     local result = {};
     local counter = 1;
@@ -149,6 +150,47 @@ local function findTrades(orderNum)
 end;
 
 
+
+---------------------------------------------------------------------------------------
+-- Caching descriptors for tarding parameters;
+-- The key of the replay object in cache is id (hash code of the string = classCode + securityCode + parameterName).
+--
+---------------------------------------------------------------------------------------
+local paramDescriptorCache = {};
+local paramDescriptorCacheSize = 0;
+
+
+local function cacheParamDescriptor(descriptor)
+    logger.writeToLog(this, "CACHING PARAMETER'S DESCRIPTOR: \n" .. jsonParser: encode_pretty(descriptor));
+    paramDescriptorCache[descriptor.id] = descriptor;
+    paramDescriptorCacheSize = paramDescriptorCacheSize + 1;
+end;
+
+
+local function getParamDescriptor(descriptorId)
+    local cacheItem = paramDescriptorCache[descriptorId];
+    if cacheItem ~= nil then
+        paramDescriptorCache[descriptorId] = nil;
+        paramDescriptorCacheSize = paramDescriptorCacheSize - 1;
+        logger.writeToLog(this, "EXTRACT PARAMETER'S DESCRIPTOR FROM CACHE FOR ID: " .. descriptorId .."!");
+    end;
+    return cacheItem;
+end;
+
+
+local function containsParamDescriptor(descriptorId)
+    logger.writeToLog(this, "CHEKING THE EXISTANCE OF THE PARAMETER'S DESCRIPTOR WITH ID: " .. descriptorId .." IN CACHE!");
+    local descriptor = paramDescriptorCache[descriptorId];
+    if descriptor ~= nil then
+        logger.writeToLog(this, "FOUND PARAMETER'S DESCRIPTOR: " .. jsonParser: encode_pretty(descriptor));
+        return true;
+    else
+        logger.writeToLog(this, "PARAMETER'S DESCRIPTOR WITH ID: " .. descriptorId .." DOES NOT EXIST IN CACHE!");
+        return false;
+    end;
+end;
+
+
 ---------------------------------------------------------------------------------------
 -- Public functions to work with cache
 --
@@ -160,19 +202,38 @@ function CacheManager : cache(objectType, object)
         cacheOrder(object);
     elseif TRADE == objectType then
         cacheTrade(object);
+    elseif PARAMETER_DESCRIPTOR == objectType then
+        cacheParamDescriptor(object);
     else
         -- DO NOTHING
     end;
 end;
 
 
-function CacheManager : find(objectType, key)
+function CacheManager : get(objectType, key)
     if(TRANS_REPLAY == objectType) then
-        return findTransactionReplay(key);
+        return getTransactionReplay(key);
     elseif ORDER == objectType then
-        return findOrder(key);
+        return getOrder(key);
     elseif TRADE == objectType then
-        return findTrades(key);
+        return getTrades(key);
+    elseif PARAMETER_DESCRIPTOR == objectType then
+        return getParamDescriptor(key);
+    else
+        return nil;
+    end;
+end;
+
+
+function CacheManager : contains(objectType, key)
+    if(TRANS_REPLAY == objectType) then
+        return false;
+    elseif ORDER == objectType then
+        return false;
+    elseif TRADE == objectType then
+        return false;
+    elseif PARAMETER_DESCRIPTOR == objectType then
+        return containsParamDescriptor(key);
     else
         return nil;
     end;
@@ -186,6 +247,18 @@ function CacheManager : resetCache()
     ordersCacheSize = 0;
     tradesCache = {};
     tradesCacheSize = 0;
+
+    -- Close descriptors for trading parameters
+    for key, value in pairs(paramDescriptorCache) do
+        local result = CancelParamRequest(value.classCode, value.securityCode, value.parameterName);
+        if result == true then
+            logger.writeToLog(this, "SUCCESSFULLY CLOSING PARAMETER'S DESCRIPTOR: " .. jsonParser: encode_pretty(value) .."\nWHILE RESETING CACHE!");
+        else
+            logger.writeToLog(this, "FAILED TO CLOSE PARAMETER'S DESCRIPTOR IN CACHE FOR ID: " .. jsonParser: encode_pretty(value) .."\nWHILE RESETING CACHE!");
+        end;
+    end;
+    paramDescriptorCache = {};
+    paramDescriptorCacheSize = 0;
 end;
 
 
