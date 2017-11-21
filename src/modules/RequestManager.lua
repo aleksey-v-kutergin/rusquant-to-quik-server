@@ -676,6 +676,105 @@ local function getMaxLotCountResponse(request)
 
 end;
 
+
+---------------------------------------------------------------------------------------
+-- Requesting order book data.
+--
+---------------------------------------------------------------------------------------
+
+local function getSubcribeQuotesResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "SubscribeQuotesResponseBody";
+    local isValid = reuqestBody.id ~= nil;
+    isValid = isValid and reuqestBody.classCode ~= nil;
+    isValid = isValid and reuqestBody.securityCode ~= nil;
+
+    if isValid == true then
+        local result = quikDataManager.subscribeQuotes(this,  reuqestBody.id,
+                                                              reuqestBody.classCode,
+                                                              reuqestBody.securityCode);
+
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["descriptor"] = result.descriptor;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+local function getUnsubcribeQuotesResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "UnsubscribeQuotesResponseBody";
+
+    if reuqestBody.descriptor ~= nil then
+        local result = quikDataManager.unsubscribeQuotes(this,  reuqestBody.descriptor);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["result"] = result.booleanResult;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS! DESCRIPTOR FOR PARAMETER IS NIL!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+local function getIsSubscribedToQuotesResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "IsSubscribeQuotesResponseBody";
+
+    if reuqestBody.descriptor ~= nil then
+        local result = quikDataManager.isSubscribedToQuotes(this,  reuqestBody.descriptor);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["result"] = result.booleanResult;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS! DESCRIPTOR FOR PARAMETER IS NIL!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
 ---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
@@ -713,6 +812,8 @@ local function processGET(request)
         return getClassesListResponse(request);
     elseif subject == "CLASS_SECURITIES" then
         return getClassSecuritiesResponse(request);
+    elseif subject == "IS_SUBSCRIBED_QUOTES" then
+        return getIsSubscribedToQuotesResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
@@ -733,6 +834,10 @@ local function processPOST(request)
         return getSubcribeParameterResponse(request);
     elseif subject == "UNSUBSCRIBE_TRADING_PARAMETER" then
         return getUnsubcribeParameterResponse(request);
+    elseif subject == "SUBSCRIBE_QUOTES" then
+        return getSubcribeQuotesResponse(request);
+    elseif subject == "UNSUBSCRIBE_QUOTES" then
+        return getUnsubcribeQuotesResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;

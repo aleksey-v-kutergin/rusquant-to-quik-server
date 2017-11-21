@@ -388,6 +388,115 @@ end;
 
 
 ---------------------------------------------------------------------------------------
+-- Section with server-side functionality to access order book data
+--
+---------------------------------------------------------------------------------------
+
+
+function QuikDataManager : subscribeQuotes(id, classCode, securityCode)
+    local result = {};
+
+    local exitsInCache = cacheManager.contains(this, "QUOTES_DESCRIPTOR", id);
+    if exitsInCache == false then
+        local subscribeResult = Subscribe_Level_II_Quotes(classCode, securityCode);
+        if subscribeResult == true then
+            local descriptor = {};
+            descriptor["type"] = "QuotesDescriptor";
+            descriptor["id"] = id;
+            descriptor["classCode"] = classCode;
+            descriptor["securityCode"] = securityCode;
+            cacheManager.cache(this, "QUOTES_DESCRIPTOR", descriptor)
+
+            result["status"] = "SUCCESS";
+            result["descriptor"] = descriptor;
+        else
+            result["status"] = "FAILED";
+            result["error"] = "CALL OF " .. "Subscribe_Level_II_Quotes" ..
+                    "( classCode = " .. classCode ..
+                    ", securityCode = " .. securityCode ..
+                    ") RETURNS FALSE!";
+        end;
+    else
+        result["status"] = "FAILED";
+        result["error"] = "SUBSCRIPTION TO QUOTES FOR: " ..
+                "{ id = " .. id ..
+                ", classCode = " .. classCode ..
+                ", securityCode = " .. securityCode ..
+                "} ALREADY EXISTS IN CACHE!";
+    end;
+
+    return result;
+end;
+
+
+function QuikDataManager : unsubscribeQuotes(descriptor)
+    local result = {};
+
+    local id = descriptor.id;
+    local classCode = descriptor.classCode;
+    local securityCode = descriptor.securityCode;
+
+    local exitsInCache = cacheManager.contains(this, "QUOTES_DESCRIPTOR", id);
+    if exitsInCache == true then
+        local cancelationResult = Unsubscribe_Level_II_Quotes(classCode, securityCode);
+        if cancelationResult == true then
+            local booleanResult = {};
+            booleanResult["type"] = "BooleanResult";
+            booleanResult["value"] = true;
+
+            cacheManager.get(this, "QUOTES_DESCRIPTOR", id);
+            result["status"] = "SUCCESS";
+            result["booleanResult"] = booleanResult;
+        else
+            result["status"] = "FAILED";
+            result["error"] = "CALL OF " .. "Unsubscribe_Level_II_Quotes" ..
+                    "( classCode = " .. classCode ..
+                    ", securityCode = " .. securityCode ..
+                    ") RETURNS FALSE!";
+        end;
+    else
+        result["status"] = "FAILED";
+        result["error"] = "SUBSCRIPTION TO QUOTES FOR: " ..
+                "{ id = " .. id ..
+                ", classCode = " .. classCode ..
+                ", securityCode = " .. securityCode ..
+                "} DOES EXISTS IN CACHE! SUBSCRIBE TO QUOTES FIRST!";
+    end;
+
+    return result;
+end;
+
+
+function QuikDataManager : isSubscribedToQuotes(descriptor)
+    local result = {};
+
+    local id = descriptor.id;
+    local classCode = descriptor.classCode;
+    local securityCode = descriptor.securityCode;
+
+    local exitsInCache = cacheManager.contains(this, "QUOTES_DESCRIPTOR", id);
+    if exitsInCache == true then
+        local booleanResult = {};
+        booleanResult["type"] = "BooleanResult";
+        booleanResult["value"] = IsSubscribed_Level_II_Quotes(classCode, securityCode);
+
+        result["status"] = "SUCCESS";
+        result["booleanResult"] = booleanResult;
+    else
+        result["status"] = "FAILED";
+        result["error"] = "SUBSCRIPTION TO QUOTES FOR: " ..
+                "{ id = " .. id ..
+                ", classCode = " .. classCode ..
+                ", securityCode = " .. securityCode ..
+                "} DOES EXISTS IN CACHE! SUBSCRIBE TO QUOTES FIRST!";
+    end;
+
+    return result;
+end;
+
+
+
+---------------------------------------------------------------------------------------
 -- Section with server-side functionality for access to quik tables.
 --
 ---------------------------------------------------------------------------------------

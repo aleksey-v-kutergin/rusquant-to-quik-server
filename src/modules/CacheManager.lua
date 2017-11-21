@@ -21,6 +21,7 @@ local TRANS_REPLAY = "TRANS_REPLAY";
 local ORDER = "ORDER";
 local TRADE = "TRADE";
 local PARAMETER_DESCRIPTOR = "PARAMETER_DESCRIPTOR";
+local QUOTES_DESCRIPTOR = "QUOTES_DESCRIPTOR";
 local logger;
 local jsonParser;
 
@@ -191,6 +192,47 @@ local function containsParamDescriptor(descriptorId)
 end;
 
 
+
+---------------------------------------------------------------------------------------
+-- Caching descriptors for quotes (order book data);
+-- The key of the object in cache is id (hash code of the string = classCode + securityCode).
+--
+---------------------------------------------------------------------------------------
+local quotesDescriptorCache = {};
+local quotesDescriptorCacheSize = 0;
+
+
+local function cacheQuotesDescriptor(descriptor)
+    logger.writeToLog(this, "CACHING QUOTES DESCRIPTOR: \n" .. jsonParser: encode_pretty(descriptor));
+    quotesDescriptorCache[descriptor.id] = descriptor;
+    quotesDescriptorCacheSize = quotesDescriptorCacheSize + 1;
+end;
+
+
+local function getQuotesDescriptor(descriptorId)
+    local cacheItem = quotesDescriptorCache[descriptorId];
+    if cacheItem ~= nil then
+        quotesDescriptorCache[descriptorId] = nil;
+        quotesDescriptorCacheSize = quotesDescriptorCacheSize - 1;
+        logger.writeToLog(this, "EXTRACT QUOTES DESCRIPTOR FROM CACHE FOR ID: " .. descriptorId .."!");
+    end;
+    return cacheItem;
+end;
+
+
+local function containsQuotesDescriptor(descriptorId)
+    logger.writeToLog(this, "CHEKING THE EXISTANCE OF THE QUOTES DESCRIPTOR WITH ID: " .. descriptorId .." IN CACHE!");
+    local descriptor = quotesDescriptorCache[descriptorId];
+    if descriptor ~= nil then
+        logger.writeToLog(this, "FOUND QUOTES DESCRIPTOR: " .. jsonParser: encode_pretty(descriptor));
+        return true;
+    else
+        logger.writeToLog(this, "QUOTES DESCRIPTOR WITH ID: " .. descriptorId .." DOES NOT EXIST IN CACHE!");
+        return false;
+    end;
+end;
+
+
 ---------------------------------------------------------------------------------------
 -- Public functions to work with cache
 --
@@ -204,6 +246,8 @@ function CacheManager : cache(objectType, object)
         cacheTrade(object);
     elseif PARAMETER_DESCRIPTOR == objectType then
         cacheParamDescriptor(object);
+    elseif QUOTES_DESCRIPTOR == objectType then
+        cacheQuotesDescriptor(object);
     else
         -- DO NOTHING
     end;
@@ -219,6 +263,8 @@ function CacheManager : get(objectType, key)
         return getTrades(key);
     elseif PARAMETER_DESCRIPTOR == objectType then
         return getParamDescriptor(key);
+    elseif QUOTES_DESCRIPTOR == objectType then
+        return getQuotesDescriptor(key);
     else
         return nil;
     end;
@@ -234,6 +280,8 @@ function CacheManager : contains(objectType, key)
         return false;
     elseif PARAMETER_DESCRIPTOR == objectType then
         return containsParamDescriptor(key);
+    elseif QUOTES_DESCRIPTOR == objectType then
+        return containsQuotesDescriptor(key);
     else
         return nil;
     end;
@@ -259,6 +307,22 @@ function CacheManager : resetCache()
     end;
     paramDescriptorCache = {};
     paramDescriptorCacheSize = 0;
+
+
+    -- Close descriptors for quotes
+    for key, value in pairs(quotesDescriptorCache) do
+        local isSubscribed = IsSubscribed_Level_II_Quotes(value.classCode, value.securityCode);
+        if isSubscribed == true then
+            local result = Unsubscribe_Level_II_Quotes(value.classCode, value.securityCode);
+            if result == true then
+                logger.writeToLog(this, "SUCCESSFULLY CLOSING QUOTES DESCRIPTOR: " .. jsonParser: encode_pretty(value) .."\nWHILE RESETING CACHE!");
+            else
+                logger.writeToLog(this, "FAILED TO CLOSE QUOTES DESCRIPTOR IN CACHE FOR ID: " .. jsonParser: encode_pretty(value) .."\nWHILE RESETING CACHE!");
+            end;
+        end;
+    end;
+    quotesDescriptorCache = {};
+    quotesDescriptorCacheSize = 0;
 end;
 
 
