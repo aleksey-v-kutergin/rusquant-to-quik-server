@@ -775,6 +775,38 @@ local function getIsSubscribedToQuotesResponse(request)
 end;
 
 
+local function getQuotesResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "QuotesResponseBody";
+    local isValid = true;
+    isValid = isValid and reuqestBody.classCode ~= nil;
+    isValid = isValid and reuqestBody.securityCode ~= nil;
+
+    if isValid == true then
+        local result = quikDataManager.getQuotes(this, reuqestBody.classCode, reuqestBody.securityCode);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["orderBook"] = result.orderBook;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
 ---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
@@ -814,6 +846,8 @@ local function processGET(request)
         return getClassSecuritiesResponse(request);
     elseif subject == "IS_SUBSCRIBED_QUOTES" then
         return getIsSubscribedToQuotesResponse(request);
+    elseif subject == "QUOTES" then
+        return getQuotesResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;

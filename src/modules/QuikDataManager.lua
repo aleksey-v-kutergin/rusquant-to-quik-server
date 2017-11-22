@@ -495,6 +495,61 @@ function QuikDataManager : isSubscribedToQuotes(descriptor)
 end;
 
 
+local function processQuotes(depth, quotes)
+    local orderBookSide = {};
+    local orderBookLevel;
+
+    for i = 1, depth, 1 do
+        orderBookLevel = {};
+        orderBookLevel["type"] = "OrderBookLevel";
+
+        -- Number of the order book level
+        orderBookLevel["number"] = i;
+
+        -- Prive of the level
+        orderBookLevel["price"] = quotes[i].price;
+
+        -- For a certain price level there may be no quotes
+        if quotes[i].quantity ~= nil then
+            orderBookLevel["quantity"] = quotes[i].quantity;
+        else
+            orderBookLevel["quantity"] = 0;
+        end;
+        orderBookSide[i] = orderBookLevel;
+    end;
+
+    return orderBookSide;
+end;
+
+
+function QuikDataManager : getQuotes(classCode, securityCode)
+    local result = {};
+
+    local quotesSnapshot = getQuoteLevel2(classCode, securityCode);
+    if quotesSnapshot ~= nil then
+        logger.writeToLog(this, "\nSOURCE QUOTES SNAPSHOT FROM getQuoteLevel2: " .. jsonParser: encode_pretty(quotesSnapshot) .. "\n");
+        local orderBook = {};
+        orderBook["type"] = "OrderBook";
+
+        orderBook["bid_count"] = tonumber(quotesSnapshot.bid_count);
+        orderBook["offer_count"] = tonumber(quotesSnapshot.offer_count);
+        orderBook["bid"] = processQuotes(tonumber(quotesSnapshot.bid_count), quotesSnapshot.bid);
+        orderBook["offer"] = processQuotes(tonumber(quotesSnapshot.offer_count), quotesSnapshot.offer);
+        logger.writeToLog(this, "\nRESULTING ORDER BOOK OBJECT: " .. jsonParser: encode_pretty(orderBook) .. "\n");
+
+        result["status"] = "SUCCESS";
+        result["orderBook"] = orderBook;
+    else
+        result["status"] = "FAILED";
+        result["error"] = "CALL OF " .. "getQuoteLevel2" ..
+                "( classCode = " .. classCode ..
+                ", securityCode = " .. securityCode ..
+                ") RETURNS NIL! SUBCRIBE TO QUOTES OR OPEN ORDER BOOK FOR SECURITY OF INTEREST!";
+    end;
+
+    return result;
+end;
+
 
 ---------------------------------------------------------------------------------------
 -- Section with server-side functionality for access to quik tables.
