@@ -713,6 +713,115 @@ function QuikDataManager : getDatasourceSise(descriptor)
 end;
 
 
+
+function QuikDataManager : getCandle(descriptor, candleIndex)
+    local result = {};
+    local exitsInCache = cacheManager.contains(this, "OHLC_DATASOURCE", descriptor.id);
+    if exitsInCache == true then
+        local datasource = cacheManager.get(this, "OHLC_DATASOURCE", descriptor.id, false);
+        local dsSize = datasource.instance:Size();
+        if candleIndex < 1 and candleIndex > dsSize then
+            result["status"] = "FAILED";
+            result["error"] = "CANDLE INDEX IS OUT OF RANGE! CURRENT DATASOURCE SIZE IS: " .. dsSize;
+        else
+            local candle = {};
+            candle["type"] = "Candle";
+
+            -- Set prices and volume
+            candle["open"]   = datasource.instance:O(candleIndex);
+            candle["high"]   = datasource.instance:H(candleIndex);
+            candle["low"]    = datasource.instance:L(candleIndex);
+            candle["close"]  = datasource.instance:C(candleIndex);
+            candle["volume"] = datasource.instance:V(candleIndex);
+
+            -- Set date and time
+            local dateTime = datasource.instance:T(candleIndex);
+            dateTime["type"] = "DateTime";
+            candle["datetime"] = dateTime;
+
+            result["status"] = "SUCCESS";
+            result["status"] = candle;
+        end;
+    else
+        result["status"] = "FAILED";
+        local msg = "OHLC DATASOURCE FOR: " ..
+                                            "{ id = " .. descriptor.id ..
+                                            ", classCode = " .. descriptor.classCode ..
+                                            ", securityCode = " .. descriptor.securityCode ..
+                                            ", interval = " .. descriptor.interval;
+        if descriptor.parameter ~= nil then
+            msg = msg .. ", parameter = " .. descriptor.parameter;
+        end;
+        msg = msg .. "} DOES EXISTS IN CACHE! CREATE DATASOURCE FIRST!";
+        result["error"] = msg;
+    end;
+
+    logger.writeToLog(this, "\nCANDLE RESULT: " .. jsonParser: encode_pretty(result) .. "\n");
+    return result;
+end;
+
+
+
+function QuikDataManager : getAllCandles(descriptor)
+    local result = {};
+    local exitsInCache = cacheManager.contains(this, "OHLC_DATASOURCE", descriptor.id);
+    if exitsInCache == true then
+        local datasource = cacheManager.get(this, "OHLC_DATASOURCE", descriptor.id, false);
+        local dsSize = datasource.instance:Size();
+
+        local ohlcDataFrame = {};
+        ohlcDataFrame["type"] = "OhlcDataFrame";
+        ohlcDataFrame["records"] = {};
+
+        local candle;
+        local dateTime;
+        for i = 1, dsSize, 1 do
+            candle = {};
+            candle["type"] = "Candle";
+
+            -- Set prices and volume
+            candle["open"]   = datasource.instance:O(i);
+            candle["high"]   = datasource.instance:H(i);
+            candle["low"]    = datasource.instance:L(i);
+            candle["close"]  = datasource.instance:C(i);
+            candle["volume"] = datasource.instance:V(i);
+
+            -- Set date and time
+            dateTime = datasource.instance:T(i);
+            dateTime["type"] = "DateTime";
+            candle["datetime"] = dateTime;
+            logger.writeToLog(this, "\nCANDLE(" .. i .. "): " .. jsonParser: encode_pretty(candle) .. "\n");
+            ohlcDataFrame.records[i] = candle;
+        end;
+
+        result["ohlcDataFrame"] = ohlcDataFrame;
+        result["status"] = "SUCCESS";
+    else
+        result["status"] = "FAILED";
+        local msg = "OHLC DATASOURCE FOR: " ..
+                "{ id = " .. descriptor.id ..
+                ", classCode = " .. descriptor.classCode ..
+                ", securityCode = " .. descriptor.securityCode ..
+                ", interval = " .. descriptor.interval;
+        if descriptor.parameter ~= nil then
+            msg = msg .. ", parameter = " .. descriptor.parameter;
+        end;
+        msg = msg .. "} DOES EXISTS IN CACHE! CREATE DATASOURCE FIRST!";
+        result["error"] = msg;
+    end;
+
+    logger.writeToLog(this, "\nALL CANDLES RESULT: " .. jsonParser: encode_pretty(result) .. "\n");
+    return result;
+end;
+
+
+
+
+
+
+
+
+
 ---------------------------------------------------------------------------------------
 -- Section with server-side functionality for access to quik tables.
 --

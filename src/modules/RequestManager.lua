@@ -909,6 +909,67 @@ local function getDatasourceSizeResponse(request)
 end;
 
 
+local function getSingleCandleResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "SingleCandleResponseBody";
+
+    local isValid = reuqestBody.descriptor ~= nil;
+    isValid = isValid and reuqestBody.candleIndex ~= nil;
+    if isValid == true then
+        local result = quikDataManager.getCandle(this,  reuqestBody.descriptor, reuqestBody.candleIndex);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["candle"] = result.candle;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS! DESCRIPTOR OR INDEX OF CANDLE IS NIL!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+
+local function getAllCandlesResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "AllCandlesResponseBody";
+
+    if reuqestBody.descriptor ~= nil then
+        local result = quikDataManager.getAllCandles(this,  reuqestBody.descriptor);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["ohlcDataFrame"] = result.ohlcDataFrame;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS! DESCRIPTOR FOR DATASOURCE IS NIL!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
 
 ---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
@@ -953,6 +1014,10 @@ local function processGET(request)
         return getQuotesResponse(request);
     elseif subject == "DATASOURCE_SIZE" then
         return getDatasourceSizeResponse(request);
+    elseif subject == "SINGLE_CANDLE" then
+        return getSingleCandleResponse(request);
+    elseif subject == "ALL_CANDLES" then
+        return getAllCandlesResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
