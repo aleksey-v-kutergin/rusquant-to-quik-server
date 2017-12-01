@@ -22,6 +22,7 @@ local ORDER = "ORDER";
 local TRADE = "TRADE";
 local PARAMETER_DESCRIPTOR = "PARAMETER_DESCRIPTOR";
 local QUOTES_DESCRIPTOR = "QUOTES_DESCRIPTOR";
+local OHLC_DATASOURCE = "OHLC_DATASOURCE";
 local logger;
 local jsonParser;
 
@@ -41,12 +42,14 @@ local function cacheTransactionReplay(transReplay)
 end;
 
 
-local function getTransactionReplay(transId)
+local function getTransactionReplay(transId, remove)
     local cacheItem = trasactionsReplayCache[transId];
     if cacheItem ~= nil then
-        trasactionsReplayCache[transId] = nil;
-        transCacheSize = transCacheSize - 1;
-        logger.writeToLog(this, "FIND TRANSE_REPLAY IN CACHE FOR TRANSACTION: " .. transId .."!");
+        if remove == true then
+            trasactionsReplayCache[transId] = nil;
+            transCacheSize = transCacheSize - 1;
+        end;
+        logger.writeToLog(this, "EXTRACT TRANSACTION REPLAY FROM CACHE FOR TRANSACTION ID: " .. transId .."!");
     end;
     return cacheItem;
 end;
@@ -69,17 +72,18 @@ local function cacheOrder(order)
 end;
 
 
-local function getOrder(orderNum)
+local function getOrder(orderNum, remove)
     logger.writeToLog(this, "CHECKING FOR EXISTANCE OF THE ORDER IN CACHE!");
     local cacheItem = ordersCache[orderNum];
     if cacheItem ~= nil then
         cacheItem["type"] = "Order";
         cacheItem.datetime["type"] = "DateTime";
         cacheItem.withdraw_datetime["type"] = "DateTime";
-
-        ordersCache[orderNum] = nil;
-        ordersCacheSize = ordersCacheSize - 1;
-        logger.writeToLog(this, "FIND ORDER IN CACHE\n: " .. jsonParser: encode_pretty(cacheItem));
+        if remove == true then
+            ordersCache[orderNum] = nil;
+            ordersCacheSize = ordersCacheSize - 1;
+        end;
+        logger.writeToLog(this, "EXTRACT ORDER FROM CACHE\n: " .. jsonParser: encode_pretty(cacheItem));
     end;
     return cacheItem;
 end;
@@ -129,7 +133,7 @@ local function cacheTrade(trade)
 end;
 
 
-local function getTrades(orderNum)
+local function getTrades(orderNum, remove)
     local trades = tradesCache[orderNum];
     local result = {};
     local counter = 1;
@@ -138,14 +142,13 @@ local function getTrades(orderNum)
             v["type"] = "Trade";
             v.datetime["type"] = "DateTime";
             v.canceled_datetime["type"] = "DateTime";
-
             result[counter] = v;
             counter = counter + 1;
-
-            -- Reduces cache size
-            tradesCacheSize = tradesCacheSize - 1;
         end;
-        tradesCache[orderNum] = nil;
+        if remove == true then
+            tradesCache[orderNum] = nil;
+            tradesCacheSize = tradesCacheSize - counter;
+        end;
     end;
     return result;
 end;
@@ -168,12 +171,14 @@ local function cacheParamDescriptor(descriptor)
 end;
 
 
-local function getParamDescriptor(descriptorId)
+local function getParamDescriptor(descriptorId, remove)
     local cacheItem = paramDescriptorCache[descriptorId];
     if cacheItem ~= nil then
-        paramDescriptorCache[descriptorId] = nil;
-        paramDescriptorCacheSize = paramDescriptorCacheSize - 1;
         logger.writeToLog(this, "EXTRACT PARAMETER'S DESCRIPTOR FROM CACHE FOR ID: " .. descriptorId .."!");
+        if remove == true then
+            paramDescriptorCache[descriptorId] = nil;
+            paramDescriptorCacheSize = paramDescriptorCacheSize - 1;
+        end;
     end;
     return cacheItem;
 end;
@@ -209,12 +214,14 @@ local function cacheQuotesDescriptor(descriptor)
 end;
 
 
-local function getQuotesDescriptor(descriptorId)
+local function getQuotesDescriptor(descriptorId, remove)
     local cacheItem = quotesDescriptorCache[descriptorId];
     if cacheItem ~= nil then
-        quotesDescriptorCache[descriptorId] = nil;
-        quotesDescriptorCacheSize = quotesDescriptorCacheSize - 1;
         logger.writeToLog(this, "EXTRACT QUOTES DESCRIPTOR FROM CACHE FOR ID: " .. descriptorId .."!");
+        if remove == true then
+            quotesDescriptorCache[descriptorId] = nil;
+            quotesDescriptorCacheSize = quotesDescriptorCacheSize - 1;
+        end;
     end;
     return cacheItem;
 end;
@@ -233,6 +240,49 @@ local function containsQuotesDescriptor(descriptorId)
 end;
 
 
+
+---------------------------------------------------------------------------------------
+-- Caching datasources for OHLC data;
+--
+---------------------------------------------------------------------------------------
+local datasourceCache = {};
+local datasourceCacheSize = 0;
+
+
+local function cacheDatasource(datasource)
+    logger.writeToLog(this, "CACHING DATASOURCE: \n" .. jsonParser: encode_pretty(datasource.descriptor));
+    datasourceCache[datasource.id] = datasource;
+    datasourceCacheSize = datasourceCacheSize + 1;
+end;
+
+
+local function getDatasource(datasourceId, remove)
+    local cacheItem = quotesDescriptorCache[datasourceId];
+    if cacheItem ~= nil then
+        logger.writeToLog(this, "EXTRACT DATASOURCE FROM CACHE FOR ID: " .. datasourceId .."!");
+        if remove == true then
+            datasourceCache[datasourceId] = nil;
+            datasourceCacheSize = datasourceCacheSize - 1;
+        end;
+    end;
+    return cacheItem;
+end;
+
+
+local function containsDatasource(datasourceId)
+    logger.writeToLog(this, "CHEKING THE EXISTANCE OF THE DATASOURCE WITH ID: " .. datasourceId .." IN CACHE!");
+    local datasource = datasourceCache[datasourceId];
+    if datasource ~= nil then
+        logger.writeToLog(this, "FOUND DATASOURCE: " .. jsonParser: encode_pretty(datasource.descriptor));
+        return true;
+    else
+        logger.writeToLog(this, "DATASOURCE WITH ID: " .. datasourceId .." DOES NOT EXIST IN CACHE!");
+        return false;
+    end;
+end;
+
+
+
 ---------------------------------------------------------------------------------------
 -- Public functions to work with cache
 --
@@ -248,23 +298,27 @@ function CacheManager : cache(objectType, object)
         cacheParamDescriptor(object);
     elseif QUOTES_DESCRIPTOR == objectType then
         cacheQuotesDescriptor(object);
+    elseif OHLC_DATASOURCE == objectType then
+        cacheDatasource(object);
     else
         -- DO NOTHING
     end;
 end;
 
 
-function CacheManager : get(objectType, key)
+function CacheManager : get(objectType, key, remove)
     if(TRANS_REPLAY == objectType) then
-        return getTransactionReplay(key);
+        return getTransactionReplay(key, remove);
     elseif ORDER == objectType then
-        return getOrder(key);
+        return getOrder(key, remove);
     elseif TRADE == objectType then
-        return getTrades(key);
+        return getTrades(key, remove);
     elseif PARAMETER_DESCRIPTOR == objectType then
-        return getParamDescriptor(key);
+        return getParamDescriptor(key, remove);
     elseif QUOTES_DESCRIPTOR == objectType then
-        return getQuotesDescriptor(key);
+        return getQuotesDescriptor(key, remove);
+    elseif OHLC_DATASOURCE == objectType then
+        return getDatasource(key, remove);
     else
         return nil;
     end;
@@ -282,6 +336,8 @@ function CacheManager : contains(objectType, key)
         return containsParamDescriptor(key);
     elseif QUOTES_DESCRIPTOR == objectType then
         return containsQuotesDescriptor(key);
+    elseif OHLC_DATASOURCE == objectType then
+        return containsDatasource(key);
     else
         return nil;
     end;

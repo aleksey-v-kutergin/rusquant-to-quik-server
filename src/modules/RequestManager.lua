@@ -808,6 +808,109 @@ end;
 
 
 ---------------------------------------------------------------------------------------
+-- Requesting OHLC price data.
+--
+---------------------------------------------------------------------------------------
+
+local function getCreateDatasourceResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "CreateDatasourceResponseBody";
+    local isValid = reuqestBody.id ~= nil;
+    isValid = isValid and reuqestBody.classCode ~= nil;
+    isValid = isValid and reuqestBody.securityCode ~= nil;
+    isValid = isValid and reuqestBody.interval ~= nil;
+
+    if isValid == true then
+        local result = quikDataManager.createDatasource(this,   reuqestBody.id,
+                                                                reuqestBody.classCode,
+                                                                reuqestBody.securityCode,
+                                                                reuqestBody.interval,
+                                                                reuqestBody.parameter);
+
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["descriptor"] = result.descriptor;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+local function getCloseDatasourceResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "CloseDatasourceResponseBody";
+
+    if reuqestBody.descriptor ~= nil then
+        local result = quikDataManager.closeDatasource(this,  reuqestBody.descriptor);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["result"] = result.booleanResult;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS! DESCRIPTOR FOR DATASOURCE IS NIL!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+
+local function getDatasourceSizeResponse(request)
+
+    local response = getCommonResponsePart(request);
+    local reuqestBody = request.body;
+
+    local responseBody = {};
+    responseBody["type"] = "DatasourceSizeResponseBody";
+
+    if reuqestBody.descriptor ~= nil then
+        local result = quikDataManager.getDatasourceSise(this,  reuqestBody.descriptor);
+        if result.status ~= "FAILED" then
+            response["status"] = "SUCCESS";
+            responseBody["result"] = result.dsSize;
+        else
+            response["status"] = "FAILED";
+            response["error"] = result.error;
+        end;
+    else
+        response["status"] = "FAILED";
+        response["error"] = "INVALID REQUEST PARAMETERS! DESCRIPTOR FOR DATASOURCE IS NIL!";
+    end;
+
+    response["body"] = responseBody;
+    response["sendingTimeOfResponseAtServer"] = os.time();
+    return response;
+
+end;
+
+
+
+---------------------------------------------------------------------------------------
 -- Process GET request from pipe's client
 --
 ---------------------------------------------------------------------------------------
@@ -848,6 +951,8 @@ local function processGET(request)
         return getIsSubscribedToQuotesResponse(request);
     elseif subject == "QUOTES" then
         return getQuotesResponse(request);
+    elseif subject == "DATASOURCE_SIZE" then
+        return getDatasourceSizeResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;
@@ -872,6 +977,10 @@ local function processPOST(request)
         return getSubcribeQuotesResponse(request);
     elseif subject == "UNSUBSCRIBE_QUOTES" then
         return getUnsubcribeQuotesResponse(request);
+    elseif subject == "CREATE_DATASOURCE" then
+        return getCreateDatasourceResponse(request);
+    elseif subject == "CLOSE_DATASOURCE" then
+        return getCloseDatasourceResponse(request);
     else
         --logger.log("UNKNOWN SUBJECT OF REQUEST" .. jsonParser: encode_pretty(request));
     end;

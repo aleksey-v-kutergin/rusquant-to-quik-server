@@ -127,7 +127,7 @@ end;
 
 local function getTransactionResult(transaction)
     local transId = transaction["TRANS_ID"];
-    local replay = cacheManager.get(this, "TRANS_REPLAY", transId)
+    local replay = cacheManager.get(this, "TRANS_REPLAY", transId, true)
 
     local result = {};
     local counter = 0;
@@ -136,7 +136,7 @@ local function getTransactionResult(transaction)
             logger.writeToLog(this, "CHECKING FOR EXISTANCE OF TRANSACTION REPLAY IN CACHE!");
         end;
 
-        replay = cacheManager.get(this, "TRANS_REPLAY", transId);
+        replay = cacheManager.get(this, "TRANS_REPLAY", transId, true);
         if counter > TRANSACTION_REPLAY_RETRY_COUNT then
             result["status"] = "FAILED";
             result["error"] = "EXCEEDING RETRY COUNT FOR WAITING OF OCCURANCE OF THE TRANSACTION REPLAY IN CACHE! TRANSACTION REPLAY HAS NOT OCCURED YET!";
@@ -205,7 +205,7 @@ end;
 local ORDER_REPLAY_RETRY_COUNT = 10000000;
 
 function QuikDataManager : getOrder(orderNumber, noWait)
-    local order = cacheManager.get(this, "ORDER", orderNumber)
+    local order = cacheManager.get(this, "ORDER", orderNumber, true)
     local result = {};
 
     if noWait == true then
@@ -222,7 +222,7 @@ function QuikDataManager : getOrder(orderNumber, noWait)
 
     local counter = 0;
     while order == nil do
-        order = cacheManager.get(this, "ORDER", orderNumber);
+        order = cacheManager.get(this, "ORDER", orderNumber, true);
         if counter > ORDER_REPLAY_RETRY_COUNT then
             result["status"] = "FAILED";
             result["error"] = "EXCEEDING RETRY COUNT FOR WAITING OF OCCURANCE OF THE ORDER IN CACHE! ORDER HAS NOT OCCURED YET!";
@@ -248,7 +248,7 @@ function QuikDataManager : getTrades(orderNumber)
     local result = {};
     result["status"] = "SUCCESS";
 
-    local trades = cacheManager.get(this, "TRADE", orderNumber);
+    local trades = cacheManager.get(this, "TRADE", orderNumber, true);
     local tradesDataFrame = {};
     tradesDataFrame["type"] = "TradesDataFrame";
     tradesDataFrame["records"] = trades;
@@ -319,7 +319,7 @@ function QuikDataManager : unsubscribeParameter(descriptor)
             booleanResult["type"] = "BooleanResult";
             booleanResult["value"] = true;
 
-            cacheManager.get(this, "PARAMETER_DESCRIPTOR", id);
+            cacheManager.get(this, "PARAMETER_DESCRIPTOR", id, true);
             result["status"] = "SUCCESS";
             result["booleanResult"] = booleanResult;
         else
@@ -444,7 +444,7 @@ function QuikDataManager : unsubscribeQuotes(descriptor)
             booleanResult["type"] = "BooleanResult";
             booleanResult["value"] = true;
 
-            cacheManager.get(this, "QUOTES_DESCRIPTOR", id);
+            cacheManager.get(this, "QUOTES_DESCRIPTOR", id, true);
             result["status"] = "SUCCESS";
             result["booleanResult"] = booleanResult;
         else
@@ -545,6 +545,168 @@ function QuikDataManager : getQuotes(classCode, securityCode)
                 "( classCode = " .. classCode ..
                 ", securityCode = " .. securityCode ..
                 ") RETURNS NIL! SUBCRIBE TO QUOTES OR OPEN ORDER BOOK FOR SECURITY OF INTEREST!";
+    end;
+
+    return result;
+end;
+
+
+
+---------------------------------------------------------------------------------------
+-- Section with server-side functionality to access OHLC price data
+--
+---------------------------------------------------------------------------------------
+
+function QuikDataManager : createDatasource(id, classCode, securityCode, interval, parameter)
+    local result = {};
+    local exitsInCache = cacheManager.contains(this, "OHLC_DATASOURCE", id);
+    if exitsInCache == false then
+        local ds, error;
+        local msg = "CALL OF " .. "CreateDataSource" ..
+                "{ id = " .. id ..
+                ", classCode = " .. classCode ..
+                ", securityCode = " .. securityCode ..
+                ", interval = " .. interval;
+        if parameter ~= nil then
+            msg = msg .. ", parameter = " .. parameter;
+        end;
+        msg = msg .. "}";
+        logger.writeToLog(this, msg);
+        if parameter == nil then
+            ds, error = CreateDataSource(classCode, securityCode, interval);
+        else
+            ds, error = CreateDataSource(classCode, securityCode, interval, parameter);
+        end;
+
+        if error ~= "" and error ~= nil then
+            result["status"] = "FAILED";
+            local msg = "CALL OF " .. "CreateDataSource" ..
+                    "{ id = " .. id ..
+                    ", classCode = " .. classCode ..
+                    ", securityCode = " .. securityCode ..
+                    ", interval = " .. interval;
+            if parameter ~= nil then
+                msg = msg .. ", parameter = " .. parameter;
+            end;
+            msg = msg .. "} RETURN ERROR: " .. error;
+            result["error"] = msg;
+        else
+            -- Если график не открыт в терминале, то данные заказываются с сервера.
+            -- На их получение может уйти время, поэтому рекомендуется довить такое ожидание:
+            while ds:Size() == 0 do
+                local msg = "\nWAITING FOR THE RECEIPT OF DATA IN DATASOURCE: " ..
+                        "{ id = " .. id ..
+                        ", classCode = " .. classCode ..
+                        ", securityCode = " .. securityCode ..
+                        ", interval = " .. interval;
+                if parameter ~= nil then
+                    msg = msg .. ", parameter = " .. parameter;
+                end;
+                msg = msg .. "}";
+                logger.writeToLog(this, msg);
+                sleep(1);
+            end;
+
+            local descriptor = {};
+            descriptor["type"] = "DatasourceDescriptor";
+            descriptor["id"] = id;
+            descriptor["classCode"] = classCode;
+            descriptor["securityCode"] = securityCode;
+            descriptor["interval"] = interval;
+            if parameter ~= nil then
+                descriptor["parameter"] = parameter;
+            end;
+
+            -- Чтобы получать новые данные без использования функции обратного вызова, а просто получать новые данные в ds
+            -- и брать их оттуда по необходимости нужно повесить на источник пустой коллбак.
+            local isSuccess = ds:SetEmptyCallback();
+            if isSuccess == true then
+                local datasource = {};
+                datasource["id"] = descriptor.id;
+                datasource["descriptor"] = descriptor;
+                datasource["instance"] = ds;
+                cacheManager.cache(this, "OHLC_DATASOURCE", datasource)
+
+                result["status"] = "SUCCESS";
+                result["descriptor"] = descriptor;
+            else
+                result["status"] = "FAILED";
+                result["error"] = "CALL OF "
+                        .. "SetEmptyCallback() FOR DATASOURCE: "
+                        .. jsonParser: encode_pretty(descriptor)
+                        .. "\nRETURNS FALSE! DATA UPDATES FROM SERVER ARE NOT AVAILABLE!";
+            end;
+        end;
+    else
+        result["status"] = "FAILED";
+        local msg = "OHLC DATASOURCE FOR: " ..
+                "{ id = " .. id ..
+                ", classCode = " .. classCode ..
+                ", securityCode = " .. securityCode ..
+                ", interval = " .. interval;
+        if parameter ~= nil then
+            msg = msg .. ", parameter = " .. parameter;
+        end;
+        msg = msg .. "} ALREADY EXISTS IN CACHE!";
+        result["error"] = msg;
+    end;
+
+    return result;
+end;
+
+
+function QuikDataManager : closeDatasource(descriptor)
+    local result = {};
+    local exitsInCache = cacheManager.contains(this, "OHLC_DATASOURCE", descriptor.id);
+    if exitsInCache == true then
+        local datasource = cacheManager.get(this, "OHLC_DATASOURCE", descriptor.id, true);
+        result["status"] = "SUCCESS";
+
+        local booleanResult = {};
+        booleanResult["type"] = "BooleanResult";
+        booleanResult["value"] = datasource.instance:Close();
+        result["booleanResult"] = booleanResult;
+    else
+        result["status"] = "FAILED";
+        local msg = "OHLC DATASOURCE FOR: " ..
+                "{ id = " .. descriptor.id ..
+                ", classCode = " .. descriptor.classCode ..
+                ", securityCode = " .. descriptor.securityCode ..
+                ", interval = " .. descriptor.interval;
+        if descriptor.parameter ~= nil then
+            msg = msg .. ", parameter = " .. descriptor.parameter;
+        end;
+        msg = msg .. "} DOES EXISTS IN CACHE! CREATE DATASOURCE FIRST!";
+        result["error"] = msg;
+    end;
+
+    return result;
+end;
+
+
+function QuikDataManager : getDatasourceSise(descriptor)
+    local result = {};
+    local exitsInCache = cacheManager.contains(this, "OHLC_DATASOURCE", descriptor.id);
+    if exitsInCache == true then
+        local datasource = cacheManager.get(this, "OHLC_DATASOURCE", descriptor.id, false);
+        result["status"] = "SUCCESS";
+
+        local dsSize = {};
+        dsSize["type"] = "LongResult";
+        dsSize["value"] = datasource.instance:Size();
+        result["dsSize"] = dsSize;
+    else
+        result["status"] = "FAILED";
+        local msg = "OHLC DATASOURCE FOR: " ..
+                "{ id = " .. descriptor.id ..
+                ", classCode = " .. descriptor.classCode ..
+                ", securityCode = " .. descriptor.securityCode ..
+                ", interval = " .. descriptor.interval;
+        if descriptor.parameter ~= nil then
+            msg = msg .. ", parameter = " .. descriptor.parameter;
+        end;
+        msg = msg .. "} DOES EXISTS IN CACHE! CREATE DATASOURCE FIRST!";
+        result["error"] = msg;
     end;
 
     return result;
