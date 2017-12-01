@@ -5,12 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a74e8a6a-1335-4622-9448-4ae5351b82d4" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/.name" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/compiler.xml" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/encodings.xml" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/modules.xml" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/vcs.xml" afterPath="" />
       <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="" />
     </list>
     <ignored path="RusquantToQuikServer.iws" />
@@ -813,7 +807,7 @@
       <workItem from="1511272285146" duration="2017000" />
       <workItem from="1511325291703" duration="3838000" />
       <workItem from="1511970256788" duration="10863000" />
-      <workItem from="1512048113941" duration="14517000" />
+      <workItem from="1512048113941" duration="14558000" />
     </task>
     <task id="LOCAL-00001" summary="/* README edit */">
       <created>1470720965177</created>
@@ -1053,11 +1047,18 @@
       <option name="project" value="LOCAL" />
       <updated>1512128169196</updated>
     </task>
-    <option name="localTasksCounter" value="35" />
+    <task id="LOCAL-00035" summary="Remove IDE files from version control">
+      <created>1512128498287</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1512128498287</updated>
+    </task>
+    <option name="localTasksCounter" value="36" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="512594000" />
+    <option name="totallyTimeSpent" value="512635000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
@@ -1104,7 +1105,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="/*  Fix names of response timing fields according to fix of misprints  at client .  */" />
     <MESSAGE value="/*  Add isConnected() function from QLUA specification.  */" />
     <MESSAGE value="/*  Add getInfoParam() function from QLUA specification.  */" />
     <MESSAGE value="Add sendTransaction() functionality" />
@@ -1129,7 +1129,8 @@
     <MESSAGE value="Add support for  CreateDataSource(), ds:Close(), ds:Size() - access to OHLC data :)" />
     <MESSAGE value="Add support for  CreateDataSource(), ds:Close(), ds:Size() - access to OHLC data (not tested yet)" />
     <MESSAGE value="Add support for  getOHLCPrice() and getOHLCPrices() - access to OHLC data (not tested yet)" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add support for  getOHLCPrice() and getOHLCPrices() - access to OHLC data (not tested yet)" />
+    <MESSAGE value="Remove IDE files from version control" />
+    <option name="LAST_COMMIT_MESSAGE" value="Remove IDE files from version control" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
